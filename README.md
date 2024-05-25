@@ -7,7 +7,7 @@ The script finds new weapons automatically, just write it in dlcpacks, similar t
 
 # Installation
 
-1. Download [ScriptHookV](http://dev-c.com/gtav/scripthookv/)
-2. Download [ScriptHookVDotNet](https://github.com/scripthookvdotnet/scripthookvdotnet/releases/latest)
-3. Download [LemonUI (SHDN3)](https://github.com/LemonUIbyLemon/LemonUI/releases)
+1. Install [ScriptHookV](http://dev-c.com/gtav/scripthookv/)
+2. Install [ScriptHookVDotNet](https://github.com/scripthookvdotnet/scripthookvdotnet/releases/latest)
+3. Install [LemonUI (SHVDN3)](https://github.com/LemonUIbyLemon/LemonUI/releases/latest)
 4. Move the `scripts` folder into your main GTAV folder (press _Replace the files in the destination_ if Windows asks you to).
