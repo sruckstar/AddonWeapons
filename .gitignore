@@ -1,0 +1,12 @@
+
+/.vs
+*.dll
+*.pdb
+*.xml
+AddonWeapons/obj/Debug/.NETFramework,Version=v4.8.AssemblyAttributes.cs
+*.cache
+*.CopyComplete
+AddonWeapons/obj/Debug/AddonWeapons.csproj.FileListAbsolute.txt
+AddonWeapons/obj/Release/.NETFramework,Version=v4.8.AssemblyAttributes.cs
+AddonWeapons/obj/Release/AddonWeapons.csproj.FileListAbsolute.txt
+AddonWeapons/Properties/AssemblyInfo.cs
