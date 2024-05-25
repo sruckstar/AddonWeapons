@@ -1,9 +1,9 @@
 # AddonWeapons
-Modders create a lot of cool weapons for GTA 5, but they have to replace the standard models. AddonWeapons allows you to add weapons to the game without replacement and buy them in Ammo-nation in a separate menu. There are also weapons available and added exclusively in GTA Online.
+Modders create a lot of cool weapons for GTA 5, but they have to replace the standard models. AddonWeapons allows you to add weapons to the game without replacement and buy them in Ammu-nation in a separate menu. There are also weapons available and added exclusively in GTA Online.
 
-Box of weapons is located in two Ammo-nation with a shooting range in Los Santos. 
+Box of weapons is located in two Ammu-nation with a shooting range in Los Santos.
 
-The script finds new weapons automatically, just write it in dlcpacks, similar to the add-on vehicles.
+**The script finds new weapons automatically, just write it in dlcpacks, similar to the Add-On vehicles.**
 
 # Installation
 
