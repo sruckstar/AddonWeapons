@@ -3,7 +3,7 @@ Modders create a lot of cool weapons for GTA 5, but they have to replace the sta
 
 Box of weapons is located in two Ammu-nations with a shooting range in Los Santos.
 
-**The script finds new weapons automatically, just install them as you would any addon mods (like cars).**
+**The script finds new weapons automatically, just install them like any addon mod (like cars).**
 
 # Installation
 
