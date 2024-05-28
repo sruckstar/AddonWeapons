@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Drawing;
+using System.Linq;
+using System.IO;
 using GTA;
 using GTA.Native;
 using GTA.Math;
@@ -30,6 +32,13 @@ public class AddonWeapons : Script
     NativeMenu StunGunMenu;
     NativeMenu ThrownMenu;
     NativeMenu ComponentMenu;
+
+    int current_menu_category = -1; //-1 - nothing, 0 - main, 1 - weapon types, 2 - components
+    int last_menu_category = -1;
+    int current_item_menu = -1;
+    int last_item_menu = -1;
+    uint last_weapon_hash;
+    int last_weapon_component;
 
     const uint GROUP_DIGISCANNER = 3539449195u;
     const uint GROUP_FIREEXTINGUISHER = 4257178988u;
@@ -72,15 +81,32 @@ public class AddonWeapons : Script
 
     Prop box1;
     Prop box2;
+    Prop test_w;
 
     Vector3 box_pos_1;
     Vector3 box_pos_2;
     Vector3 box_rot_1;
     Vector3 box_rot_2;
 
+    List<uint> HeavyMenu_preview = new List<uint>();
+    List<uint> MeleeMenu_preview = new List<uint>();
+    List<uint> MachineGunsMenu_preview = new List<uint>();
+    List<uint> PistolsMenu_preview = new List<uint>();
+    List<uint> RiflesMenu_preview = new List<uint>();
+    List<uint> ShotgunsMenu_preview = new List<uint>();
+    List<uint> SMGsMenu_preview = new List<uint>();
+    List<uint> SniperRiflesMenu_preview = new List<uint>();
+    List<uint> StunGunMenu_preview = new List<uint>();
+    List<uint> ThrownMenu_preview = new List<uint>();
+    List<uint> components_preview = new List<uint>();
+
     Model model_box = new Model(2107849419);
 
+    private Camera weaponCamera;
+
     ScriptSettings config;
+
+    string filePath = "Scripts\\AddonWeapons\\weapons.log";
 
     public AddonWeapons()
     {
@@ -88,6 +114,7 @@ public class AddonWeapons : Script
         InitializeCategories();
         InitializeMenu();
         GetDlcWeaponModels();
+        LoadDlcWeaponModels();
         SetMenuItems();
         LoadAmmoBoxes();
         Tick += OnTick;
@@ -255,6 +282,17 @@ public class AddonWeapons : Script
         box_rot_2 = new Vector3(0f, 0f, 0f);
     }
 
+    private void LoadDlcWeaponModels()
+    {
+        foreach (var category in weaponCategories)
+        {
+            foreach (var weapon in category.Value)
+            {
+                Function.Call(Hash.REQUEST_WEAPON_ASSET, weapon.WeaponData.weaponHash, 31, 0);
+            }
+        }
+    }
+
     private void CreateAmmoBoxesThisFrame()
     {
         if (Game.Player.Character.Position.DistanceTo(box_pos_1) < 10f && box1 == null)
@@ -290,6 +328,16 @@ public class AddonWeapons : Script
         {
             box1.Delete();
         }
+
+        if (box2 != null && box2.Exists())
+        {
+            box2.Delete();
+        }
+
+        if (test_w != null && test_w.Exists())
+        {
+            test_w.Delete();
+        }
     }
 
     private void OnAborted(object sender, EventArgs e)
@@ -297,10 +345,248 @@ public class AddonWeapons : Script
         DeleteAmmoBoxes();
     }
 
+    public static int LoadComponentModel(uint component)
+    {
+        int componentModel = Function.Call<int>(Hash.GET_WEAPON_COMPONENT_TYPE_MODEL, component);
+
+        if (componentModel != 0)
+        {
+            Function.Call(Hash.REQUEST_MODEL, componentModel);
+
+            while (!Function.Call<bool>(Hash.HAS_MODEL_LOADED, componentModel))
+            {
+                Wait(1);
+            }
+
+            return componentModel;
+        }
+
+        return 0;
+    }
+
+    private void SetMenuCategoryID()
+    {
+        NativeMenu[] menus = new NativeMenu[]
+        {
+            menu,
+            HeavyMenu,
+            MeleeMenu,
+            MachineGunsMenu,
+            PistolsMenu,
+            RiflesMenu,
+            ShotgunsMenu,
+            SMGsMenu,
+            SniperRiflesMenu,
+            StunGunMenu,
+            ThrownMenu,
+            ComponentMenu,
+        };
+
+        int count = 0;
+        foreach (NativeMenu menu in menus)
+        {
+            if (menu.Visible)
+            {
+                current_menu_category = count;
+                current_item_menu = menu.SelectedIndex;
+            }
+            count++;
+        }
+
+        if (!IsMenuOpen())
+        {
+            current_menu_category = -1;
+            current_item_menu = -1;
+
+            if (weaponCamera != null)
+            {
+                weaponCamera.Delete();
+                World.RenderingCamera = null;
+                Game.Player.Character.IsVisible = true;
+                weaponCamera = null;
+            }
+            
+        }
+    }
+
+    private void SetWeaponPreview()
+    {
+        if (current_menu_category > 0 && current_menu_category < 11)
+        {
+            switch(current_menu_category)
+            {
+                case 1:
+                    if (test_w != null && test_w.Exists())
+                    {
+                        test_w.Delete();
+                    }
+                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, HeavyMenu_preview[HeavyMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
+                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
+                    last_weapon_hash = HeavyMenu_preview[HeavyMenu.SelectedIndex];
+                    break;
+                case 2:
+                    if (test_w != null && test_w.Exists())
+                    {
+                        test_w.Delete();
+                    }
+                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, MeleeMenu_preview[MeleeMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
+                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
+                    last_weapon_hash = MeleeMenu_preview[MeleeMenu.SelectedIndex];
+                    break;
+                case 3:
+                    if (test_w != null && test_w.Exists())
+                    {
+                        test_w.Delete();
+                    }
+                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, MachineGunsMenu_preview[MachineGunsMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
+                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
+                    last_weapon_hash = MachineGunsMenu_preview[MachineGunsMenu.SelectedIndex];
+                    break;
+                case 4:
+                    if (test_w != null && test_w.Exists())
+                    {
+                        test_w.Delete();
+                    }
+                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, PistolsMenu_preview[PistolsMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
+                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
+                    last_weapon_hash = PistolsMenu_preview[PistolsMenu.SelectedIndex];
+                    break;
+                case 5:
+                    if (test_w != null && test_w.Exists())
+                    {
+                        test_w.Delete();
+                    }
+                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, RiflesMenu_preview[RiflesMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
+                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
+                    last_weapon_hash = RiflesMenu_preview[RiflesMenu.SelectedIndex];
+                    break;
+                case 6:
+                    if (test_w != null && test_w.Exists())
+                    {
+                        test_w.Delete();
+                    }
+                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, ShotgunsMenu_preview[ShotgunsMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
+                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
+                    last_weapon_hash = ShotgunsMenu_preview[ShotgunsMenu.SelectedIndex];
+                    break;
+                case 7:
+                    if (test_w != null && test_w.Exists())
+                    {
+                        test_w.Delete();
+                    }
+                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, SMGsMenu_preview[SMGsMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
+                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
+                    last_weapon_hash = SMGsMenu_preview[SMGsMenu.SelectedIndex];
+                    break;
+                case 8:
+                    if (test_w != null && test_w.Exists())
+                    {
+                        test_w.Delete();
+                    }
+                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, SniperRiflesMenu_preview[SniperRiflesMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
+                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
+                    last_weapon_hash = SniperRiflesMenu_preview[SniperRiflesMenu.SelectedIndex];
+                    break;
+                case 9:
+                    if (test_w != null && test_w.Exists())
+                    {
+                        test_w.Delete();
+                    }
+                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, StunGunMenu_preview[StunGunMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
+                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
+                    last_weapon_hash = StunGunMenu_preview[StunGunMenu.SelectedIndex];
+                    break;
+                case 10:
+                    if (test_w != null && test_w.Exists())
+                    {
+                        test_w.Delete();
+                    }
+                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, ThrownMenu_preview[ThrownMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
+                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
+                    last_weapon_hash = ThrownMenu_preview[ThrownMenu.SelectedIndex];
+                    break;
+            }
+        }
+        else
+        {
+            if (current_menu_category == 11 && current_item_menu > 0)
+            {
+                /*/Vector3 pos = test_w.Position;
+                test_w.Delete();
+                var luxModel = LoadComponentModel(components_preview[current_item_menu - 1]);
+                test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, last_weapon_hash, 100, pos.X, pos.Y, pos.Z, 1, 0, luxModel, 0, 1);
+                Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);/*/
+
+                if (last_weapon_component != 0)
+                {
+                    Function.Call(Hash.REMOVE_WEAPON_COMPONENT_FROM_WEAPON_OBJECT, test_w, last_weapon_component);
+                    last_weapon_component = 0;
+                }
+
+                var luxModel = LoadComponentModel(components_preview[current_item_menu - 1]);
+                Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_WEAPON_OBJECT, test_w.Handle, luxModel);
+            }
+            else
+            {
+                if (current_menu_category == 11 && current_item_menu == 0)
+                {
+                    if (last_weapon_component != 0)
+                    {
+                        Function.Call(Hash.REMOVE_WEAPON_COMPONENT_FROM_WEAPON_OBJECT, test_w, last_weapon_component);
+                        last_weapon_component = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    private void SendWeaponPreviewThisFrame()
+    {
+        if (current_menu_category != last_menu_category && current_menu_category > 0)
+        {
+            //SetWeaponPreview();
+            last_menu_category = current_menu_category;
+        }
+        else
+        {
+            if (current_item_menu != last_item_menu && current_item_menu != -1)
+            {
+                //SetWeaponPreview();
+                last_item_menu = current_item_menu;
+            }
+            else
+            {
+                if (!IsMenuOpen() || current_menu_category < 1)
+                {
+                    if (test_w != null && test_w.Exists())
+                    {
+                        test_w.Delete();
+                        current_item_menu = -1;
+                        last_item_menu = -1;
+                        current_menu_category = -1;
+                        last_menu_category = -1;
+                    }
+                }
+            }
+        }
+        
+        {
+            if (!IsMenuOpen() || current_menu_category < 1)
+            {
+                if (test_w != null && test_w.Exists())
+                {
+                    test_w.Delete();
+                }
+            }
+        }
+    }
+
     private void OnTick(object sender, EventArgs e)
     {
         pool.Process();
         CreateAmmoBoxesThisFrame();
+        //SetMenuCategoryID();
+        //SendWeaponPreviewThisFrame();
 
         if (Game.Player.Character.Position.DistanceTo(box_pos_1) < 1.5f || Game.Player.Character.Position.DistanceTo(box_pos_2) < 1.5f)
         {
@@ -312,6 +598,17 @@ public class AddonWeapons : Script
             if (Function.Call<bool>(Hash.IS_CONTROL_JUST_PRESSED, 0, 51))
             {
                 menu.Visible = true;
+                last_menu_category = -1;
+
+                if (weaponCamera == null)
+                {
+                    /*/Vector3 spawnPosition = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 2.0f;
+                    Vector3 cameraPosition = spawnPosition + new Vector3(0, 1.5f, 0.5f);
+                    Game.Player.Character.IsVisible = false;
+                    weaponCamera = World.CreateCamera(new Vector3(box1.Position.X, box1.Position.Y - 2f, box1.Position.Z + 0.8f), new Vector3(0.0f, 0.0f, 0.0f), 50.0f);
+                    weaponCamera.PointAt(new Vector3(box1.Position.X, box1.Position.Y, box1.Position.Z + 1f));
+                    World.RenderingCamera = weaponCamera;/*/
+                }
             }
         }
         
@@ -417,6 +714,8 @@ public class AddonWeapons : Script
                 string WeapCost = $"${weapon.WeaponData.weaponCost}";
                 uint weaponHash = weapon.WeaponData.weaponHash;
 
+                Function.Call(Hash.REQUEST_MODEL, weaponHash);
+
                 if (WeapName == null || WeapName.Length < 3)
                 {
                     WeapName = weapon.WeaponData.GetNameLabel();
@@ -452,6 +751,7 @@ public class AddonWeapons : Script
                             {
                                 CloseAllMenus();
                                 ComponentMenu.Clear();
+                                components_preview.Clear();
                                 int rounds = -1;
                                 if (weapon.Components.Count == 0)
                                 {
@@ -482,6 +782,7 @@ public class AddonWeapons : Script
                                         uint componentHash = component.componentHash;
                                         int defaultClipSize = weapon.WeaponData.defaultClipSize;
                                         string ammoCost = $"${weapon.WeaponData.ammoCost}";
+                                        components_preview.Add(componentHash);
 
                                         if (rounds == -1)
                                         {
@@ -547,33 +848,43 @@ public class AddonWeapons : Script
                 {
                     case GROUP_HEAVY:
                         HeavyMenu.Add(weap_m);
+                        HeavyMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_MELEE:
                         MeleeMenu.Add(weap_m);
+                        MeleeMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_MG:
                         MachineGunsMenu.Add(weap_m);
+                        MachineGunsMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_PISTOL:
                         PistolsMenu.Add(weap_m);
+                        PistolsMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_RIFLE:
                         RiflesMenu.Add(weap_m);
+                        RiflesMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_SHOTGUN:
                         ShotgunsMenu.Add(weap_m);
+                        ShotgunsMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_SMG:
                         SMGsMenu.Add(weap_m);
+                        SMGsMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_SNIPER:
                         SniperRiflesMenu.Add(weap_m);
+                        SniperRiflesMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_STUNGUN:
                         StunGunMenu.Add(weap_m);
+                        StunGunMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_THROWN:
                         ThrownMenu.Add(weap_m);
+                        ThrownMenu_preview.Add(weaponHash);
                         break;
                 }
 
