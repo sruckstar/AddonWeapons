@@ -817,10 +817,25 @@ public class AddonWeapons : Script
                                 components_preview.Clear();
                                 int rounds = -1;
                                 int tints_flag = -1;
+                                string ammoCost;
 
-                                //Патроны
                                 int defaultClipSize = weapon.WeaponData.defaultClipSize;
-                                string ammoCost = $"${weapon.WeaponData.ammoCost}";
+                                int current_ammo = Function.Call<int>(Hash.GET_AMMO_IN_PED_WEAPON, Game.Player.Character, weaponHash);
+
+                                unsafe
+                                {
+                                    int maxAmmo = 0;
+                                    bool hasMaxAmmo = Function.Call<bool>(Hash.GET_MAX_AMMO, Game.Player.Character.Handle, (uint)weaponHash, (IntPtr)(&maxAmmo));
+
+                                    if (maxAmmo == current_ammo)
+                                    {
+                                        ammoCost = _MAX_ROUNDS;
+                                    }
+                                    else
+                                    {
+                                        ammoCost = $"${weapon.WeaponData.ammoCost}";
+                                    }
+                                }
 
                                 NativeItem rounds_m = new NativeItem($"{_ROUNDS} x {defaultClipSize}", "", ammoCost);
                                 rounds_m.Activated += (sender3, args3) =>
@@ -831,8 +846,25 @@ public class AddonWeapons : Script
                                     }
                                     else
                                     {
-                                        Game.Player.Money -= weapon.WeaponData.ammoCost;
-                                        Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, defaultClipSize);
+                                        unsafe
+                                        {
+                                            int maxAmmo = 0;
+                                            bool hasMaxAmmo = Function.Call<bool>(Hash.GET_MAX_AMMO, Game.Player.Character.Handle, (uint)weaponHash, (IntPtr)(&maxAmmo));
+
+                                            if (maxAmmo > current_ammo)
+                                            {
+                                                Game.Player.Money -= weapon.WeaponData.ammoCost;
+                                                Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, defaultClipSize);
+                                                current_ammo = Function.Call<int>(Hash.GET_AMMO_IN_PED_WEAPON, Game.Player.Character, weaponHash);
+
+                                                hasMaxAmmo = Function.Call<bool>(Hash.GET_MAX_AMMO, Game.Player.Character.Handle, (uint)weaponHash, (IntPtr)(&maxAmmo));
+                                                if (maxAmmo == current_ammo)
+                                                {
+                                                    rounds_m.AltTitle = _MAX_ROUNDS;
+
+                                                }
+                                            }
+                                        }
                                     }
                                 };
                                 ComponentMenu.Add(rounds_m);
