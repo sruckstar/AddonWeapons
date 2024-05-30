@@ -1,4 +1,5 @@
-# AddonWeapons
+![#AddonWeapons](https://gtaforums.com/uploads/monthly_2024_05/AddonWeaponsForums.png.1f4e155eeceb30cbd5f8cc529a5fd7ee.png)
+
 Modders create a lot of cool weapons for GTA 5, but they have to replace the standard models. AddonWeapons allows you to add weapons to the game without replacement and buy them in Ammu-nation in a separate menu. There are also weapons available exclusively in GTA Online.
 
 The box of weapons is located in the two Ammu-nations with a shooting range in Los Santos.
