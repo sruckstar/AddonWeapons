@@ -104,68 +104,22 @@ public class AddonWeapons : Script
 
     private void SetLanguage()
     {
-        int lang = Function.Call<int>(Hash.GET_CURRENT_LANGUAGE);
-        string language_file = "american.dat";
-
-        switch (lang)
-        {
-            case 0:
-                language_file = "american.dat";
-                break;
-            case 1:
-                language_file = "french.dat";
-                break;
-            case 2:
-                language_file = "german.dat";
-                break;
-            case 3:
-                language_file = "italian.dat";
-                break;
-            case 4:
-                language_file = "spanish.dat";
-                break;
-            case 5:
-                language_file = "brazilian.dat";
-                break;
-            case 6:
-                language_file = "polish.dat";
-                break;
-            case 7:
-                language_file = "russian.dat";
-                break;
-            case 8:
-                language_file = "korean.dat";
-                break;
-            case 9:
-                language_file = "chinesetrad.dat";
-                break;
-            case 10:
-                language_file = "japanese.dat";
-                break;
-            case 11:
-                language_file = "mexican.dat";
-                break;
-            case 12:
-                language_file = "chinesesimp.dat";
-                break;
-        }
-        config = ScriptSettings.Load($"Scripts\\AddonWeapons\\lang\\{language_file}");
         config_settings = ScriptSettings.Load($"Scripts\\AddonWeapons\\settings.ini");
-        _TITLE_MAIN = config.GetValue<string>("LANG", "TITLE_MAIN", "Exclusive weapons");
-        _TITLE_HEAVY = config.GetValue<string>("LANG", "TITLE_HEAVY", "Heavy");
-        _TITLE_MELEE = config.GetValue<string>("LANG", "TITLE_MELEE", "Melee");
-        _TITLE_MG = config.GetValue<string>("LANG", "TITLE_MG", "Machine Guns");
-        _TITLE_PISTOLS = config.GetValue<string>("LANG", "TITLE_PISTOLS", "Pistols");
-        _TITLE_RIFLES = config.GetValue<string>("LANG", "TITLE_RIFLES", "Rifles");
-        _TITLE_SHOTGUNS = config.GetValue<string>("LANG", "TITLE_SHOTGUNS", "Shotguns");
-        _TITLE_SMG = config.GetValue<string>("LANG", "TITLE_SMG", "SMGs");
-        _TITLE_SR = config.GetValue<string>("LANG", "TITLE_SR", "Sniper Rifles");
-        _TITLE_SG = config.GetValue<string>("LANG", "TITLE_SG", "Stun Gun");
-        _TITLE_THROWN = config.GetValue<string>("LANG", "TITLE_THROWN", "Thrown");
-        _ROUNDS = config.GetValue<string>("LANG", "ROUNDS", "Rounds");
-        _MAX_ROUNDS = config.GetValue<string>("LANG", "MAX_ROUNDS", "FULL");
-        _HELP_MESSAGE = config.GetValue<string>("LANG", "HELP_MESSAGE", "Press ~INPUT_CONTEXT~ to open the box of exclusive weapons.");
-        _NO_MONEY = config.GetValue<string>("LANG", "NO_MONEY", "You need more cash!");
+        _TITLE_MAIN = Game.GetLocalizedString("DM_WEP_SWT");
+        _TITLE_HEAVY = Game.GetLocalizedString("GC_MENU46");
+        _TITLE_MELEE = Game.GetLocalizedString("VAULT_WMENUI_8");
+        _TITLE_MG = Game.GetLocalizedString("VAULT_WMENUI_3");
+        _TITLE_PISTOLS = Game.GetLocalizedString("VAULT_WMENUI_9");
+        _TITLE_RIFLES = Game.GetLocalizedString("VAULT_WMENUI_4");
+        _TITLE_SHOTGUNS = Game.GetLocalizedString("VAULT_WMENUI_2");
+        _TITLE_SMG = Game.GetLocalizedString("DM_WEP_SMG");
+        _TITLE_SR = Game.GetLocalizedString("VAULT_WMENUI_5");
+        _TITLE_SG = Game.GetLocalizedString("VRT_B_SGUN1");
+        _TITLE_THROWN = Game.GetLocalizedString("GS_GROUP_7");
+        _ROUNDS = Game.GetLocalizedString("GSA_TYPE_R");
+        _MAX_ROUNDS = Game.GetLocalizedString("SNK_FULL");
+        _HELP_MESSAGE = "GS_BROWSE_W";
+        _NO_MONEY = Game.GetLocalizedString("MPCT_SMON_04");
 
         menuOpenKey = config_settings.GetValue<Keys>("MENU", "MenuOpenKey", Keys.None);
     }
@@ -325,7 +279,9 @@ public class AddonWeapons : Script
         {
             if (!IsMenuOpen())
             {
-                GTA.UI.Screen.ShowHelpTextThisFrame(_HELP_MESSAGE);
+                Function.Call(Hash.BEGIN_TEXT_COMMAND_DISPLAY_HELP, _HELP_MESSAGE);
+                Function.Call(Hash.ADD_TEXT_COMPONENT_SUBSTRING_KEYBOARD_DISPLAY, "~INPUT_CONTEXT~");
+                Function.Call(Hash.END_TEXT_COMMAND_DISPLAY_HELP, 0, 0, 1, -1);
             }
 
             if (Function.Call<bool>(Hash.IS_CONTROL_JUST_PRESSED, 0, 51))
