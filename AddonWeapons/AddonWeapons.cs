@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Drawing;
+using System.IO;
 using GTA;
 using GTA.Native;
 using GTA.Math;
@@ -11,6 +12,7 @@ using LemonUI.Scaleform;
 using LemonUI.Menus;
 using LemonUI.Elements;
 using LemonUI.Extensions;
+using LemonUI.Tools;
 
 public class AddonWeapons : Script
 {
@@ -82,6 +84,8 @@ public class AddonWeapons : Script
 
     ScriptSettings config;
     ScriptSettings config_settings;
+
+    int index_menu_count = -1;
 
     Keys menuOpenKey;
 
@@ -420,6 +424,80 @@ public class AddonWeapons : Script
         weaponCategories[weaponTypeGroup].Add(weaponDataWithComponents);
     }
 
+    NativeItem ActivateLivery(NativeItem item, int livery_id, uint weaponHash, BadgeSet badge)
+    {
+        if (temp_intex == i)
+        {
+            tint_m.AltTitle = "";
+            tint_m.RightBadgeSet = shop_gun;
+        }
+        item.Activated += (sender, args) =>
+        {
+            if (Game.Player.Money < 1000)
+            {
+                GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
+            }
+            else
+            {
+                Game.Player.Money -= 1000;
+                Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, livery_id);
+                item.AltTitle = "";
+                item.RightBadgeSet = badge;
+            }
+        };
+        return item;
+    }
+
+    private void CreateWeaponLivery(string WeapLabel, uint weaponHash)
+    {
+        List<string> tints = new List<string>();
+        int count = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weaponHash);
+        int temp_intex = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash);
+        string filePath = $"Scripts\\AddonWeapons\\tints\\{WeapLabel}.txt";
+        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
+
+        if (File.Exists(filePath))
+        {
+            using (StreamReader reader = new StreamReader(filePath))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    tints.Add(line);
+                }
+            }
+
+            for (int i = 0; i < tints.Count; i++)
+            {
+                NativeItem tint_m = new NativeItem(tints[i], "", "$1000");
+                tint_m = ActivateLivery(tint_m, i, weaponHash, shop_gun);
+                ComponentMenu.Add(tint_m);
+            }    
+        }
+        else
+        {
+            int tint_count = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weaponHash);
+            string tint_name;
+
+            if (tint_count == 8)
+            {
+                tint_name = "WM_TINT";
+            }
+            else
+            {
+                tint_name = "WCT_TINT_";
+            }
+
+            for (int i = 0; i < tint_count; i++)
+            {
+                string LiveryName = Game.GetLocalizedString($"{tint_name}{i}");
+                NativeItem tint_m = new NativeItem(LiveryName, "", "$1000");
+                tint_m = ActivateLivery(tint_m, i, weaponHash, shop_gun);
+                ComponentMenu.Add(tint_m);
+            }
+        }
+    }
+
     private bool IsmaxAmmo(uint weaponHash)
     {
         int current_ammo = Function.Call<int>(Hash.GET_AMMO_IN_PED_WEAPON, Game.Player.Character, weaponHash);
@@ -505,8 +583,10 @@ public class AddonWeapons : Script
                         {
                             int defaultClipSize = weapon.WeaponData.defaultClipSize;
                             string ammoCost = $"${weapon.WeaponData.ammoCost}";
+                            string WeapLabel = weapon.WeaponData.GetNameLabel();
                             NativeItem rounds_m = CreateAmmoItem(defaultClipSize, ammoCost, weapon.WeaponData.ammoCost, weaponHash);
                             ComponentMenu.Add(rounds_m);
+                            CreateWeaponLivery(WeapLabel, weaponHash);
 
                             if ((WeaponHash)weaponHash == WeaponHash.StunGunMultiplayer)
                             {
@@ -517,7 +597,6 @@ public class AddonWeapons : Script
                                 NativeItem comp_m = CreateComponentItem(CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
                                 ComponentMenu.Add(comp_m);
                             }
-
                         }
                         else
                         {
@@ -528,12 +607,14 @@ public class AddonWeapons : Script
                                 uint componentHash = component.componentHash;
                                 int defaultClipSize = weapon.WeaponData.defaultClipSize;
                                 string ammoCost = $"${weapon.WeaponData.ammoCost}";
+                                string WeapLabel = weapon.WeaponData.GetNameLabel();
 
                                 if (rounds == -1)
                                 {
                                     rounds = 1;
                                     NativeItem rounds_m = CreateAmmoItem(defaultClipSize, ammoCost, weapon.WeaponData.ammoCost, weaponHash);
                                     ComponentMenu.Add(rounds_m);
+                                    CreateWeaponLivery(WeapLabel, weaponHash);
                                 }
 
                                 NativeItem comp_m = CreateComponentItem(componentName, componentCost, component.componentCost, componentHash, weaponHash, defaultClipSize, ammoCost);
@@ -591,7 +672,6 @@ public class AddonWeapons : Script
         {
             foreach (var weapon in category.Value)
             {
-
                 string WeapName = Game.GetLocalizedString(weapon.WeaponData.GetNameLabel());
                 string WeapDesc = Game.GetLocalizedString(weapon.WeaponData.GetDescLabel());
                 string WeapCost = $"${weapon.WeaponData.weaponCost}";
