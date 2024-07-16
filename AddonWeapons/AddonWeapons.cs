@@ -411,6 +411,24 @@ public class AddonWeapons : Script
         weaponCategories[weaponTypeGroup].Add(weaponDataWithComponents);
     }
 
+    private bool IsmaxAmmo(uint weaponHash)
+    {
+        int current_ammo = Function.Call<int>(Hash.GET_AMMO_IN_PED_WEAPON, Game.Player.Character, weaponHash);
+        unsafe
+        {
+            int maxAmmo = 0;
+            bool hasMaxAmmo = Function.Call<bool>(Hash.GET_MAX_AMMO, Game.Player.Character.Handle, (uint)weaponHash, (IntPtr)(&maxAmmo));
+            if (maxAmmo == current_ammo)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+    }
+
     private BadgeSet CreateBafgeFromItem(string NormalDictionary, string NormalTexture, string HoveredDictionary, string HoveredTexture)
     {
         BadgeSet badge = new BadgeSet
@@ -426,6 +444,11 @@ public class AddonWeapons : Script
 
     private NativeItem CreateAmmoItem(int defaultClipSize, string ammoCost, int cost, uint weaponHash)
     {
+        if (IsmaxAmmo(weaponHash))
+        {
+            ammoCost = _MAX_ROUNDS;
+        }
+
         NativeItem rounds_m = new NativeItem($"{_ROUNDS} x {defaultClipSize}", "", ammoCost);
         rounds_m.Activated += (sender3, args3) =>
         {
@@ -435,8 +458,15 @@ public class AddonWeapons : Script
             }
             else
             {
-                Game.Player.Money -= cost;
-                Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, defaultClipSize);
+                if (!IsmaxAmmo(weaponHash))
+                {
+                    Game.Player.Money -= cost;
+                    Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, defaultClipSize);
+                    if (IsmaxAmmo(weaponHash))
+                    {
+                        rounds_m.AltTitle = _MAX_ROUNDS;
+                    }
+                }
             }
         };
         return rounds_m;
@@ -610,9 +640,6 @@ public class AddonWeapons : Script
 
             }
         }
-
-        //Weapons from events added by R* and not prescribed in weapon_shop.meta must be manually added here 
-
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
