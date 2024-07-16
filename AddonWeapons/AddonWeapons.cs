@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Drawing;
-using System.Linq;
-using System.IO;
 using GTA;
 using GTA.Native;
 using GTA.Math;
@@ -32,15 +30,6 @@ public class AddonWeapons : Script
     NativeMenu StunGunMenu;
     NativeMenu ThrownMenu;
     NativeMenu ComponentMenu;
-
-    int current_menu_category = -1; //-1 - nothing, 0 - main, 1 - weapon types, 2 - components
-    int last_menu_category = -1;
-    int current_item_menu = -1;
-    int last_item_menu = -1;
-    uint last_weapon_hash;
-    int last_weapon_component;
-
-    Keys menuOpenKey;
 
     const uint GROUP_DIGISCANNER = 3539449195u;
     const uint GROUP_FIREEXTINGUISHER = 4257178988u;
@@ -83,79 +72,15 @@ public class AddonWeapons : Script
 
     Prop box1;
     Prop box2;
-    Prop test_w;
 
     Vector3 box_pos_1;
     Vector3 box_pos_2;
     Vector3 box_rot_1;
     Vector3 box_rot_2;
 
-    List<uint> HeavyMenu_preview = new List<uint>();
-    List<uint> MeleeMenu_preview = new List<uint>();
-    List<uint> MachineGunsMenu_preview = new List<uint>();
-    List<uint> PistolsMenu_preview = new List<uint>();
-    List<uint> RiflesMenu_preview = new List<uint>();
-    List<uint> ShotgunsMenu_preview = new List<uint>();
-    List<uint> SMGsMenu_preview = new List<uint>();
-    List<uint> SniperRiflesMenu_preview = new List<uint>();
-    List<uint> StunGunMenu_preview = new List<uint>();
-    List<uint> ThrownMenu_preview = new List<uint>();
-    List<uint> components_preview = new List<uint>();
-
-    string[] tints_default = new string[]
-        {
-            "Black Tint",
-            "Army Tint",
-            "Green Tint",
-            "Orange Tint",
-            "LSPD Tint",
-            "Pink Tint",
-            "Gold Tint",
-            "Platinum Tint",
-        };
-
-    string[] tints_mk2 = new string[]
-        {
-            "Classic Black",
-            "Classic Gray",
-            "Classic Two-Tone",
-            "Classic White",
-            "Classic Beige",
-            "Classic Green",
-            "Classic Blue",
-            "Classic Earth",
-            "Classic Brown & Black",
-            "Red Contrast",
-            "Blue Contrast",
-            "Yellow Contrast",
-            "Orange Contrast",
-            "Bold Pink",
-            "Bold Purple & Yellow",
-            "Bold Orange",
-            "Bold Green & Purple",
-            "Bold Red Features",
-            "Bold Green Features",
-            "Bold Cyan Features",
-            "Bold Yellow Features",
-            "Bold Red & White",
-            "Bold Blue & White",
-            "Metallic Gold",
-            "Metallic Platinum",
-            "Metallic Gray & Lilac",
-            "Metallic Purple & Lime",
-            "Metallic Red",
-            "Metallic Green",
-            "Metallic Blue",
-            "Metallic White & Aqua",
-            "Metallic Red & Yellow",
-        };
-
     Model model_box = new Model(2107849419);
 
-    private Camera weaponCamera;
-
     ScriptSettings config;
-    ScriptSettings config_settings;
 
     public AddonWeapons()
     {
@@ -163,11 +88,10 @@ public class AddonWeapons : Script
         InitializeCategories();
         InitializeMenu();
         GetDlcWeaponModels();
-        LoadDlcWeaponModels();
         SetMenuItems();
         LoadAmmoBoxes();
-        KeyUp += onkeyup;
         Tick += OnTick;
+        KeyUp += onkeyup;
         Aborted += OnAborted;
     }
 
@@ -176,7 +100,7 @@ public class AddonWeapons : Script
         int lang = Function.Call<int>(Hash.GET_CURRENT_LANGUAGE);
         string language_file = "american.dat";
 
-        switch(lang)
+        switch (lang)
         {
             case 0:
                 language_file = "american.dat";
@@ -218,8 +142,7 @@ public class AddonWeapons : Script
                 language_file = "chinesesimp.dat";
                 break;
         }
-        config = ScriptSettings.Load($"Scripts\\AddonWeapons\\lang\\{language_file}");
-        config_settings = ScriptSettings.Load($"Scripts\\AddonWeapons\\settings.ini");
+        config = ScriptSettings.Load($"Scripts\\AddonWeapons\\{language_file}");
         _TITLE_MAIN = config.GetValue<string>("LANG", "TITLE_MAIN", "Exclusive weapons");
         _TITLE_HEAVY = config.GetValue<string>("LANG", "TITLE_HEAVY", "Heavy");
         _TITLE_MELEE = config.GetValue<string>("LANG", "TITLE_MELEE", "Melee");
@@ -235,8 +158,6 @@ public class AddonWeapons : Script
         _MAX_ROUNDS = config.GetValue<string>("LANG", "MAX_ROUNDS", "FULL");
         _HELP_MESSAGE = config.GetValue<string>("LANG", "HELP_MESSAGE", "Press ~INPUT_CONTEXT~ to open the box of exclusive weapons.");
         _NO_MONEY = config.GetValue<string>("LANG", "NO_MONEY", "You need more cash!");
-
-        menuOpenKey = config_settings.GetValue<Keys>("MENU", "MenuOpenKey", Keys.None);
     }
 
     private void InitializeGroupNames()
@@ -287,7 +208,7 @@ public class AddonWeapons : Script
 
     private void InitializeMenu()
     {
-        pool = new ObjectPool(); 
+        pool = new ObjectPool();
         menu = new NativeMenu("", _TITLE_MAIN, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
         HeavyMenu = new NativeMenu("", _TITLE_HEAVY, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
         MeleeMenu = new NativeMenu("", _TITLE_MELEE, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
@@ -335,17 +256,6 @@ public class AddonWeapons : Script
         box_rot_2 = new Vector3(0f, 0f, 0f);
     }
 
-    private void LoadDlcWeaponModels()
-    {
-        foreach (var category in weaponCategories)
-        {
-            foreach (var weapon in category.Value)
-            {
-                Function.Call(Hash.REQUEST_WEAPON_ASSET, weapon.WeaponData.weaponHash, 31, 0);
-            }
-        }
-    }
-
     private void CreateAmmoBoxesThisFrame()
     {
         if (Game.Player.Character.Position.DistanceTo(box_pos_1) < 10f && box1 == null)
@@ -381,16 +291,6 @@ public class AddonWeapons : Script
         {
             box1.Delete();
         }
-
-        if (box2 != null && box2.Exists())
-        {
-            box2.Delete();
-        }
-
-        if (test_w != null && test_w.Exists())
-        {
-            test_w.Delete();
-        }
     }
 
     private void OnAborted(object sender, EventArgs e)
@@ -400,254 +300,13 @@ public class AddonWeapons : Script
 
     private void onkeyup(object sender, KeyEventArgs e)
     {
-        if (e.KeyCode == menuOpenKey)
-        {
-            menu.Visible = true;
-        }
-    }
-
-    public static int LoadComponentModel(uint component)
-    {
-        int componentModel = Function.Call<int>(Hash.GET_WEAPON_COMPONENT_TYPE_MODEL, component);
-
-        if (componentModel != 0)
-        {
-            Function.Call(Hash.REQUEST_MODEL, componentModel);
-
-            while (!Function.Call<bool>(Hash.HAS_MODEL_LOADED, componentModel))
-            {
-                Wait(1);
-            }
-
-            return componentModel;
-        }
-
-        return 0;
-    }
-
-    private void SetMenuCategoryID()
-    {
-        NativeMenu[] menus = new NativeMenu[]
-        {
-            menu,
-            HeavyMenu,
-            MeleeMenu,
-            MachineGunsMenu,
-            PistolsMenu,
-            RiflesMenu,
-            ShotgunsMenu,
-            SMGsMenu,
-            SniperRiflesMenu,
-            StunGunMenu,
-            ThrownMenu,
-            ComponentMenu,
-        };
-
-        int count = 0;
-        foreach (NativeMenu menu in menus)
-        {
-            if (menu.Visible)
-            {
-                current_menu_category = count;
-                current_item_menu = menu.SelectedIndex;
-            }
-            count++;
-        }
-
-        if (!IsMenuOpen())
-        {
-            current_menu_category = -1;
-            current_item_menu = -1;
-
-            if (weaponCamera != null)
-            {
-                weaponCamera.Delete();
-                World.RenderingCamera = null;
-                Game.Player.Character.IsVisible = true;
-                weaponCamera = null;
-            }
-            
-        }
-    }
-
-    private void SetWeaponPreview()
-    {
-        if (current_menu_category > 0 && current_menu_category < 11)
-        {
-            switch(current_menu_category)
-            {
-                case 1:
-                    if (test_w != null && test_w.Exists())
-                    {
-                        test_w.Delete();
-                    }
-                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, HeavyMenu_preview[HeavyMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
-                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
-                    last_weapon_hash = HeavyMenu_preview[HeavyMenu.SelectedIndex];
-                    break;
-                case 2:
-                    if (test_w != null && test_w.Exists())
-                    {
-                        test_w.Delete();
-                    }
-                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, MeleeMenu_preview[MeleeMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
-                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
-                    last_weapon_hash = MeleeMenu_preview[MeleeMenu.SelectedIndex];
-                    break;
-                case 3:
-                    if (test_w != null && test_w.Exists())
-                    {
-                        test_w.Delete();
-                    }
-                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, MachineGunsMenu_preview[MachineGunsMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
-                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
-                    last_weapon_hash = MachineGunsMenu_preview[MachineGunsMenu.SelectedIndex];
-                    break;
-                case 4:
-                    if (test_w != null && test_w.Exists())
-                    {
-                        test_w.Delete();
-                    }
-                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, PistolsMenu_preview[PistolsMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
-                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
-                    last_weapon_hash = PistolsMenu_preview[PistolsMenu.SelectedIndex];
-                    break;
-                case 5:
-                    if (test_w != null && test_w.Exists())
-                    {
-                        test_w.Delete();
-                    }
-                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, RiflesMenu_preview[RiflesMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
-                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
-                    last_weapon_hash = RiflesMenu_preview[RiflesMenu.SelectedIndex];
-                    break;
-                case 6:
-                    if (test_w != null && test_w.Exists())
-                    {
-                        test_w.Delete();
-                    }
-                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, ShotgunsMenu_preview[ShotgunsMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
-                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
-                    last_weapon_hash = ShotgunsMenu_preview[ShotgunsMenu.SelectedIndex];
-                    break;
-                case 7:
-                    if (test_w != null && test_w.Exists())
-                    {
-                        test_w.Delete();
-                    }
-                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, SMGsMenu_preview[SMGsMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
-                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
-                    last_weapon_hash = SMGsMenu_preview[SMGsMenu.SelectedIndex];
-                    break;
-                case 8:
-                    if (test_w != null && test_w.Exists())
-                    {
-                        test_w.Delete();
-                    }
-                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, SniperRiflesMenu_preview[SniperRiflesMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
-                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
-                    last_weapon_hash = SniperRiflesMenu_preview[SniperRiflesMenu.SelectedIndex];
-                    break;
-                case 9:
-                    if (test_w != null && test_w.Exists())
-                    {
-                        test_w.Delete();
-                    }
-                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, StunGunMenu_preview[StunGunMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
-                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
-                    last_weapon_hash = StunGunMenu_preview[StunGunMenu.SelectedIndex];
-                    break;
-                case 10:
-                    if (test_w != null && test_w.Exists())
-                    {
-                        test_w.Delete();
-                    }
-                    test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, ThrownMenu_preview[ThrownMenu.SelectedIndex], 100, box1.Position.X, box1.Position.Y - 0.5f, box1.Position.Z + 2f, 1, 1065353216, 0, 0, 1);
-                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);
-                    last_weapon_hash = ThrownMenu_preview[ThrownMenu.SelectedIndex];
-                    break;
-            }
-        }
-        else
-        {
-            if (current_menu_category == 11 && current_item_menu > 0)
-            {
-                /*/Vector3 pos = test_w.Position;
-                test_w.Delete();
-                var luxModel = LoadComponentModel(components_preview[current_item_menu - 1]);
-                test_w = Function.Call<Prop>(Hash.CREATE_WEAPON_OBJECT, last_weapon_hash, 100, pos.X, pos.Y, pos.Z, 1, 0, luxModel, 0, 1);
-                Function.Call(Hash.PLACE_OBJECT_ON_GROUND_OR_OBJECT_PROPERLY, test_w);/*/
-
-                if (last_weapon_component != 0)
-                {
-                    Function.Call(Hash.REMOVE_WEAPON_COMPONENT_FROM_WEAPON_OBJECT, test_w, last_weapon_component);
-                    last_weapon_component = 0;
-                }
-
-                var luxModel = LoadComponentModel(components_preview[current_item_menu - 1]);
-                Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_WEAPON_OBJECT, test_w.Handle, luxModel);
-            }
-            else
-            {
-                if (current_menu_category == 11 && current_item_menu == 0)
-                {
-                    if (last_weapon_component != 0)
-                    {
-                        Function.Call(Hash.REMOVE_WEAPON_COMPONENT_FROM_WEAPON_OBJECT, test_w, last_weapon_component);
-                        last_weapon_component = 0;
-                    }
-                }
-            }
-        }
-    }
-
-    private void SendWeaponPreviewThisFrame()
-    {
-        if (current_menu_category != last_menu_category && current_menu_category > 0)
-        {
-            //SetWeaponPreview();
-            last_menu_category = current_menu_category;
-        }
-        else
-        {
-            if (current_item_menu != last_item_menu && current_item_menu != -1)
-            {
-                //SetWeaponPreview();
-                last_item_menu = current_item_menu;
-            }
-            else
-            {
-                if (!IsMenuOpen() || current_menu_category < 1)
-                {
-                    if (test_w != null && test_w.Exists())
-                    {
-                        test_w.Delete();
-                        current_item_menu = -1;
-                        last_item_menu = -1;
-                        current_menu_category = -1;
-                        last_menu_category = -1;
-                    }
-                }
-            }
-        }
         
-        {
-            if (!IsMenuOpen() || current_menu_category < 1)
-            {
-                if (test_w != null && test_w.Exists())
-                {
-                    test_w.Delete();
-                }
-            }
-        }
     }
 
     private void OnTick(object sender, EventArgs e)
     {
         pool.Process();
         CreateAmmoBoxesThisFrame();
-        //SetMenuCategoryID();
-        //SendWeaponPreviewThisFrame();
 
         if (Game.Player.Character.Position.DistanceTo(box_pos_1) < 1.5f || Game.Player.Character.Position.DistanceTo(box_pos_2) < 1.5f)
         {
@@ -659,21 +318,10 @@ public class AddonWeapons : Script
             if (Function.Call<bool>(Hash.IS_CONTROL_JUST_PRESSED, 0, 51))
             {
                 menu.Visible = true;
-                last_menu_category = -1;
-
-                if (weaponCamera == null)
-                {
-                    /*/Vector3 spawnPosition = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 2.0f;
-                    Vector3 cameraPosition = spawnPosition + new Vector3(0, 1.5f, 0.5f);
-                    Game.Player.Character.IsVisible = false;
-                    weaponCamera = World.CreateCamera(new Vector3(box1.Position.X, box1.Position.Y - 2f, box1.Position.Z + 0.8f), new Vector3(0.0f, 0.0f, 0.0f), 50.0f);
-                    weaponCamera.PointAt(new Vector3(box1.Position.X, box1.Position.Y, box1.Position.Z + 1f));
-                    World.RenderingCamera = weaponCamera;/*/
-                }
             }
         }
-        
-        if (Game.Player.Character.Position.DistanceTo(box_pos_1) > 1.5f && Game.Player.Character.Position.DistanceTo(box_pos_2) > 1.5f && IsMenuOpen() && menuOpenKey == Keys.None)
+
+        if (Game.Player.Character.Position.DistanceTo(box_pos_1) > 1.5f && Game.Player.Character.Position.DistanceTo(box_pos_2) > 1.5f && IsMenuOpen())
         {
             CloseAllMenus();
         }
@@ -694,7 +342,7 @@ public class AddonWeapons : Script
         HeavyMenu.Visible = false;
         MeleeMenu.Visible = false;
         MachineGunsMenu.Visible = false;
-        PistolsMenu.Visible = false; 
+        PistolsMenu.Visible = false;
         RiflesMenu.Visible = false;
         ShotgunsMenu.Visible = false;
         SMGsMenu.Visible = false;
@@ -763,36 +411,161 @@ public class AddonWeapons : Script
         weaponCategories[weaponTypeGroup].Add(weaponDataWithComponents);
     }
 
+    private BadgeSet CreateBafgeFromItem(string NormalDictionary, string NormalTexture, string HoveredDictionary, string HoveredTexture)
+    {
+        BadgeSet badge = new BadgeSet
+        {
+            NormalDictionary = NormalDictionary,
+            NormalTexture = NormalTexture,
+            HoveredDictionary = HoveredDictionary,
+            HoveredTexture = HoveredTexture
+        };
+
+        return badge;
+    }
+
+    private NativeItem CreateAmmoItem(int defaultClipSize, string ammoCost, int cost, uint weaponHash)
+    {
+        NativeItem rounds_m = new NativeItem($"{_ROUNDS} x {defaultClipSize}", "", ammoCost);
+        rounds_m.Activated += (sender3, args3) =>
+        {
+            if (Game.Player.Money < cost)
+            {
+                GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
+            }
+            else
+            {
+                Game.Player.Money -= cost;
+                Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, defaultClipSize);
+            }
+        };
+        return rounds_m;
+    }
+
+    private NativeItem CreateWeaponItem(DlcWeaponDataWithComponents weapon, string WeapName, string WeapDesc, string WeapCost, uint weaponHash)
+    {
+        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
+
+        NativeItem weap_m = new NativeItem(WeapName, WeapDesc, WeapCost);
+        weap_m.Activated += (sender, args) =>
+        {
+            if (Game.Player.Money < weapon.WeaponData.weaponCost)
+            {
+                GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
+            }
+            else
+            {
+                if (Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash))
+                {
+                    if (Function.Call<uint>(Hash.GET_WEAPONTYPE_GROUP, weaponHash) != GROUP_MELEE)
+                    {
+                        CloseAllMenus();
+                        ComponentMenu.Clear();
+                        int rounds = -1;
+                        if (weapon.Components.Count == 0)
+                        {
+                            int defaultClipSize = weapon.WeaponData.defaultClipSize;
+                            string ammoCost = $"${weapon.WeaponData.ammoCost}";
+                            NativeItem rounds_m = CreateAmmoItem(defaultClipSize, ammoCost, weapon.WeaponData.ammoCost, weaponHash);
+                            ComponentMenu.Add(rounds_m);
+
+                            if ((WeaponHash)weaponHash == WeaponHash.StunGunMultiplayer)
+                            {
+                                string CompName = Game.GetLocalizedString("WCT_STNGN_BAIL");
+                                uint componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_STUNGUN_VARMOD_BAIL");
+                                string componentCost = $"${weapon.WeaponData.ammoCost}";
+                                int componentCost_int = 1000;
+                                NativeItem comp_m = CreateComponentItem(CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+                            }
+
+                        }
+                        else
+                        {
+                            foreach (var component in weapon.Components)
+                            {
+                                string componentName = Game.GetLocalizedString(component.GetNameLabel());
+                                string componentCost = $"${component.componentCost}";
+                                uint componentHash = component.componentHash;
+                                int defaultClipSize = weapon.WeaponData.defaultClipSize;
+                                string ammoCost = $"${weapon.WeaponData.ammoCost}";
+
+                                if (rounds == -1)
+                                {
+                                    rounds = 1;
+                                    NativeItem rounds_m = CreateAmmoItem(defaultClipSize, ammoCost, weapon.WeaponData.ammoCost, weaponHash);
+                                    ComponentMenu.Add(rounds_m);
+                                }
+
+                                NativeItem comp_m = CreateComponentItem(componentName, componentCost, component.componentCost, componentHash, weaponHash, defaultClipSize, ammoCost);
+
+                                if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character.Handle, weaponHash, componentHash))
+                                {
+                                    comp_m.AltTitle = "";
+                                    comp_m.RightBadgeSet = shop_gun;
+                                }
+                                ComponentMenu.Add(comp_m);
+                            }
+                        }
+                        ComponentMenu.Visible = true;
+                    }
+                }
+                else
+                {
+                    Game.Player.Money -= weapon.WeaponData.weaponCost;
+                    Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
+                }
+
+                weap_m.AltTitle = "";
+                weap_m.RightBadgeSet = shop_gun;
+            }
+        };
+        return weap_m;
+    }
+
+    private NativeItem CreateComponentItem(string componentName, string componentCost, int cost_int, uint componentHash, uint weaponHash, int defaultClipSize, string ammoCost)
+    {
+        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
+
+        NativeItem comp_m = new NativeItem(componentName, "", componentCost);
+        comp_m.Activated += (sender, args) =>
+        {
+            if (Game.Player.Money < cost_int)
+            {
+                GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
+            }
+            else
+            {
+                Game.Player.Money -= cost_int;
+                Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
+
+                comp_m.AltTitle = "";
+                comp_m.RightBadgeSet = shop_gun;
+            }
+        };
+        return comp_m;
+    }
+
     private void SetMenuItems()
     {
-        int index_menu_count = -1;
-
         foreach (var category in weaponCategories)
         {
             foreach (var weapon in category.Value)
             {
-                string WeapLabel = weapon.WeaponData.GetNameLabel();
+
                 string WeapName = Game.GetLocalizedString(weapon.WeaponData.GetNameLabel());
                 string WeapDesc = Game.GetLocalizedString(weapon.WeaponData.GetDescLabel());
                 string WeapCost = $"${weapon.WeaponData.weaponCost}";
                 uint weaponHash = weapon.WeaponData.weaponHash;
-
-                Function.Call(Hash.REQUEST_MODEL, weaponHash);
 
                 if (WeapName == null || WeapName.Length < 3)
                 {
                     WeapName = weapon.WeaponData.GetNameLabel();
                 }
 
-                BadgeSet shop_gun = new BadgeSet
-                {
-                    NormalDictionary = "commonmenu",
-                    NormalTexture = "shop_gunclub_icon_a",
-                    HoveredDictionary = "commonmenu",
-                    HoveredTexture = "shop_gunclub_icon_b"
-                };
+                BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
 
-                NativeItem weap_m = new NativeItem(WeapName, WeapDesc, WeapCost);
+                NativeItem weap_m = CreateWeaponItem(weapon, WeapName, WeapDesc, WeapCost, weaponHash);
 
                 if (Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash))
                 {
@@ -800,327 +573,46 @@ public class AddonWeapons : Script
                     weap_m.RightBadgeSet = shop_gun;
                 }
 
-                weap_m.Activated += (sender, args) =>
-                {
-                    if (Game.Player.Money < weapon.WeaponData.weaponCost)
-                    {
-                        GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
-                    }
-                    else
-                    {
-                        if (Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash))
-                        {
-                            if (Function.Call<uint>(Hash.GET_WEAPONTYPE_GROUP, weaponHash) != GROUP_MELEE)
-                            {
-                                CloseAllMenus();
-                                ComponentMenu.Clear();
-                                components_preview.Clear();
-                                int rounds = -1;
-                                int tints_flag = -1;
-                                string ammoCost;
-
-                                int defaultClipSize = weapon.WeaponData.defaultClipSize;
-                                int current_ammo = Function.Call<int>(Hash.GET_AMMO_IN_PED_WEAPON, Game.Player.Character, weaponHash);
-
-                                unsafe
-                                {
-                                    int maxAmmo = 0;
-                                    bool hasMaxAmmo = Function.Call<bool>(Hash.GET_MAX_AMMO, Game.Player.Character.Handle, (uint)weaponHash, (IntPtr)(&maxAmmo));
-
-                                    if (maxAmmo == current_ammo)
-                                    {
-                                        ammoCost = _MAX_ROUNDS;
-                                    }
-                                    else
-                                    {
-                                        ammoCost = $"${weapon.WeaponData.ammoCost}";
-                                    }
-                                }
-
-                                NativeItem rounds_m = new NativeItem($"{_ROUNDS} x {defaultClipSize}", "", ammoCost);
-                                rounds_m.Activated += (sender3, args3) =>
-                                {
-                                    if (Game.Player.Money < weapon.WeaponData.ammoCost)
-                                    {
-                                        GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
-                                    }
-                                    else
-                                    {
-                                        unsafe
-                                        {
-                                            int maxAmmo = 0;
-                                            bool hasMaxAmmo = Function.Call<bool>(Hash.GET_MAX_AMMO, Game.Player.Character.Handle, (uint)weaponHash, (IntPtr)(&maxAmmo));
-
-                                            if (maxAmmo > current_ammo)
-                                            {
-                                                Game.Player.Money -= weapon.WeaponData.ammoCost;
-                                                Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, defaultClipSize);
-                                                current_ammo = Function.Call<int>(Hash.GET_AMMO_IN_PED_WEAPON, Game.Player.Character, weaponHash);
-
-                                                hasMaxAmmo = Function.Call<bool>(Hash.GET_MAX_AMMO, Game.Player.Character.Handle, (uint)weaponHash, (IntPtr)(&maxAmmo));
-                                                if (maxAmmo == current_ammo)
-                                                {
-                                                    rounds_m.AltTitle = _MAX_ROUNDS;
-
-                                                }
-                                            }
-                                        }
-                                    }
-                                };
-                                ComponentMenu.Add(rounds_m);
-                                index_menu_count = ComponentMenu.Count();
-
-                                if (weapon.Components.Count > 0)
-                                {
-                                    foreach (var component in weapon.Components)
-                                    {
-                                        string componentName = Game.GetLocalizedString(component.GetNameLabel());
-                                        string componentCost = $"${component.componentCost}";
-                                        uint componentHash = component.componentHash;
-                                        defaultClipSize = weapon.WeaponData.defaultClipSize;
-                                        ammoCost = $"${weapon.WeaponData.ammoCost}";
-                                        components_preview.Add(componentHash);
-
-                                        NativeItem comp_m = new NativeItem(componentName, "", componentCost);
-
-                                        if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character.Handle, weaponHash, componentHash))
-                                        {
-                                            comp_m.AltTitle = "";
-                                            comp_m.RightBadgeSet = shop_gun;
-                                        }
-
-                                        comp_m.Activated += (sender2, args2) =>
-                                        {
-                                            if (Game.Player.Money < component.componentCost)
-                                            {
-                                                GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
-                                            }
-                                            else
-                                            {
-                                                Game.Player.Money -= component.componentCost;
-                                                Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
-
-                                                comp_m.AltTitle = "";
-                                                comp_m.RightBadgeSet = shop_gun;
-                                            }
-                                        };
-                                        ComponentMenu.Add(comp_m);
-                                        index_menu_count = ComponentMenu.Count();
-                                    }
-
-                                }
-
-                                if (tints_flag == -1)
-                                {
-                                    List<string> tints = new List<string>();
-                                    int count = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weaponHash);
-                                    string filePath = $"Scripts\\AddonWeapons\\tints\\{WeapLabel}.txt";
-
-                                    if (File.Exists(filePath))
-                                    {
-                                        using (StreamReader reader = new StreamReader(filePath))
-                                        {
-                                            string line;
-                                            while ((line = reader.ReadLine()) != null)
-                                            {
-                                                tints.Add(line);
-                                            }
-                                        }
-
-                                        for (int i = 0; i < tints.Count; i++)
-                                        {
-                                            NativeItem tint_m = new NativeItem(tints[i], "", "$1000");
-                                            int temp_intex = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash);
-
-                                            if (temp_intex == i)
-                                            {
-                                                tint_m.AltTitle = "";
-                                                tint_m.RightBadgeSet = shop_gun;
-                                            }
-
-                                            tint_m.Activated += (sender2, args2) =>
-                                            {
-                                                if (Game.Player.Money < 1000)
-                                                {
-                                                    GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
-                                                }
-                                                else
-                                                {
-                                                    Game.Player.Money -= 1000;
-                                                    int tint_index = ComponentMenu.SelectedIndex - index_menu_count;
-                                                    Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint_index);
-                                                    tint_m.AltTitle = "";
-                                                    tint_m.RightBadgeSet = shop_gun;
-                                                }
-                                            };
-                                            ComponentMenu.Add(tint_m);
-                                        }
-                                        tints_flag = 1;
-                                    }
-                                    else
-                                    {
-                                        if (count == tints_default.Length)
-                                        {
-                                            for (int i = 0; i < tints_default.Length; i++)
-                                            {
-                                                NativeItem tint_m = new NativeItem($"{tints_default[i]}", "", "$1000");
-                                                int temp_intex = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash);
-
-                                                if (temp_intex == i)
-                                                {
-                                                    tint_m.AltTitle = "";
-                                                    tint_m.RightBadgeSet = shop_gun;
-                                                }
-
-                                                tint_m.Activated += (sender4, args4) =>
-                                                {
-                                                    if (Game.Player.Money < 1000)
-                                                    {
-                                                        GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
-                                                    }
-                                                    else
-                                                    {
-                                                        Game.Player.Money -= 1000;
-                                                        int tint_index = ComponentMenu.SelectedIndex - index_menu_count;
-                                                        Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint_index);
-                                                        tint_m.AltTitle = "";
-                                                        tint_m.RightBadgeSet = shop_gun;
-                                                    }
-                                                };
-                                                ComponentMenu.Add(tint_m);
-                                            }
-                                        }
-                                        else
-                                        {
-                                            if (count >= tints_mk2.Length)
-                                            {
-                                                for (int i = 0; i < tints_mk2.Length; i++)
-                                                {
-                                                    NativeItem tint_m = new NativeItem($"{tints_mk2[i]}", "", "$1000");
-                                                    int temp_intex = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash);
-
-                                                    if (temp_intex == i)
-                                                    {
-                                                        tint_m.AltTitle = "";
-                                                        tint_m.RightBadgeSet = shop_gun;
-                                                    }
-
-                                                    tint_m.Activated += (sender4, args4) =>
-                                                    {
-                                                        if (Game.Player.Money < 1000)
-                                                        {
-                                                            GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
-                                                        }
-                                                        else
-                                                        {
-                                                            Game.Player.Money -= 1000;
-                                                            int tint_index = ComponentMenu.SelectedIndex - index_menu_count;
-                                                            Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint_index);
-                                                            tint_m.AltTitle = "";
-                                                            tint_m.RightBadgeSet = shop_gun;
-                                                        }
-                                                    };
-                                                    ComponentMenu.Add(tint_m);
-                                                }
-                                            }
-                                            else
-                                            {
-                                                for (int i = 0; i < count; i++)
-                                                {
-                                                    NativeItem tint_m = new NativeItem($"Tint {i + 1}", "", "$1000");
-                                                    int temp_intex = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash);
-
-                                                    if (temp_intex == i)
-                                                    {
-                                                        tint_m.AltTitle = "";
-                                                        tint_m.RightBadgeSet = shop_gun;
-                                                    }
-
-                                                    tint_m.Activated += (sender4, args4) =>
-                                                    {
-                                                        if (Game.Player.Money < 1000)
-                                                        {
-                                                            GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
-                                                        }
-                                                        else
-                                                        {
-                                                            Game.Player.Money -= 1000;
-                                                            int tint_index = ComponentMenu.SelectedIndex - index_menu_count;
-                                                            Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint_index);
-                                                            tint_m.AltTitle = "";
-                                                            tint_m.RightBadgeSet = shop_gun;
-                                                        }
-                                                    };
-                                                    ComponentMenu.Add(tint_m);
-                                                }
-                                            }
-                                        }
-
-                                        tints_flag = 1;
-                                    }
-                                }
-
-                                ComponentMenu.Visible = true;
-                            }
-                        }
-                        else
-                        {
-                            Game.Player.Money -= weapon.WeaponData.weaponCost;
-                            Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
-                        }
-
-                        weap_m.AltTitle = "";
-                        weap_m.RightBadgeSet = shop_gun;
-                    }
-                };
-
                 uint weaponTypeGroup = Function.Call<uint>(Hash.GET_WEAPONTYPE_GROUP, weaponHash);
                 switch (weaponTypeGroup)
                 {
                     case GROUP_HEAVY:
                         HeavyMenu.Add(weap_m);
-                        HeavyMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_MELEE:
                         MeleeMenu.Add(weap_m);
-                        MeleeMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_MG:
                         MachineGunsMenu.Add(weap_m);
-                        MachineGunsMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_PISTOL:
                         PistolsMenu.Add(weap_m);
-                        PistolsMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_RIFLE:
                         RiflesMenu.Add(weap_m);
-                        RiflesMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_SHOTGUN:
                         ShotgunsMenu.Add(weap_m);
-                        ShotgunsMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_SMG:
                         SMGsMenu.Add(weap_m);
-                        SMGsMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_SNIPER:
                         SniperRiflesMenu.Add(weap_m);
-                        SniperRiflesMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_STUNGUN:
                         StunGunMenu.Add(weap_m);
-                        StunGunMenu_preview.Add(weaponHash);
                         break;
                     case GROUP_THROWN:
                         ThrownMenu.Add(weap_m);
-                        ThrownMenu_preview.Add(weaponHash);
                         break;
                 }
 
             }
         }
+
+        //Weapons from events added by R* and not prescribed in weapon_shop.meta must be manually added here 
+
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
