@@ -426,11 +426,6 @@ public class AddonWeapons : Script
 
     NativeItem ActivateLivery(NativeItem item, int livery_id, uint weaponHash, BadgeSet badge)
     {
-        if (temp_intex == i)
-        {
-            tint_m.AltTitle = "";
-            tint_m.RightBadgeSet = shop_gun;
-        }
         item.Activated += (sender, args) =>
         {
             if (Game.Player.Money < 1000)
@@ -452,7 +447,7 @@ public class AddonWeapons : Script
     {
         List<string> tints = new List<string>();
         int count = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weaponHash);
-        int temp_intex = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash);
+        int temp_index = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash);
         string filePath = $"Scripts\\AddonWeapons\\tints\\{WeapLabel}.txt";
         BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
 
@@ -471,6 +466,13 @@ public class AddonWeapons : Script
             {
                 NativeItem tint_m = new NativeItem(tints[i], "", "$1000");
                 tint_m = ActivateLivery(tint_m, i, weaponHash, shop_gun);
+
+                if (temp_index == i)
+                {
+                    tint_m.AltTitle = "";
+                    tint_m.RightBadgeSet = shop_gun;
+                }
+
                 ComponentMenu.Add(tint_m);
             }    
         }
@@ -493,6 +495,13 @@ public class AddonWeapons : Script
                 string LiveryName = Game.GetLocalizedString($"{tint_name}{i}");
                 NativeItem tint_m = new NativeItem(LiveryName, "", "$1000");
                 tint_m = ActivateLivery(tint_m, i, weaponHash, shop_gun);
+
+                if (temp_index == i)
+                {
+                    tint_m.AltTitle = "";
+                    tint_m.RightBadgeSet = shop_gun;
+                }
+
                 ComponentMenu.Add(tint_m);
             }
         }
