@@ -81,6 +81,9 @@ public class AddonWeapons : Script
     Model model_box = new Model(2107849419);
 
     ScriptSettings config;
+    ScriptSettings config_settings;
+
+    Keys menuOpenKey;
 
     public AddonWeapons()
     {
@@ -142,7 +145,8 @@ public class AddonWeapons : Script
                 language_file = "chinesesimp.dat";
                 break;
         }
-        config = ScriptSettings.Load($"Scripts\\AddonWeapons\\{language_file}");
+        config = ScriptSettings.Load($"Scripts\\AddonWeapons\\lang\\{language_file}");
+        config_settings = ScriptSettings.Load($"Scripts\\AddonWeapons\\settings.ini");
         _TITLE_MAIN = config.GetValue<string>("LANG", "TITLE_MAIN", "Exclusive weapons");
         _TITLE_HEAVY = config.GetValue<string>("LANG", "TITLE_HEAVY", "Heavy");
         _TITLE_MELEE = config.GetValue<string>("LANG", "TITLE_MELEE", "Melee");
@@ -158,6 +162,8 @@ public class AddonWeapons : Script
         _MAX_ROUNDS = config.GetValue<string>("LANG", "MAX_ROUNDS", "FULL");
         _HELP_MESSAGE = config.GetValue<string>("LANG", "HELP_MESSAGE", "Press ~INPUT_CONTEXT~ to open the box of exclusive weapons.");
         _NO_MONEY = config.GetValue<string>("LANG", "NO_MONEY", "You need more cash!");
+
+        menuOpenKey = config_settings.GetValue<Keys>("MENU", "MenuOpenKey", Keys.None);
     }
 
     private void InitializeGroupNames()
@@ -300,7 +306,10 @@ public class AddonWeapons : Script
 
     private void onkeyup(object sender, KeyEventArgs e)
     {
-        
+        if (e.KeyCode == menuOpenKey)
+        {
+            menu.Visible = true;
+        }
     }
 
     private void OnTick(object sender, EventArgs e)
