@@ -105,14 +105,14 @@ public class AddonWeapons : Script
     private void SetLanguage()
     {
         config_settings = ScriptSettings.Load($"Scripts\\AddonWeapons\\settings.ini");
-        _TITLE_MAIN = Game.GetLocalizedString("DM_WEP_SWT");
+        _TITLE_MAIN = Game.GetLocalizedString("AD_AMMU_20");
         _TITLE_HEAVY = Game.GetLocalizedString("GC_MENU46");
         _TITLE_MELEE = Game.GetLocalizedString("VAULT_WMENUI_8");
         _TITLE_MG = Game.GetLocalizedString("VAULT_WMENUI_3");
         _TITLE_PISTOLS = Game.GetLocalizedString("VAULT_WMENUI_9");
         _TITLE_RIFLES = Game.GetLocalizedString("VAULT_WMENUI_4");
         _TITLE_SHOTGUNS = Game.GetLocalizedString("VAULT_WMENUI_2");
-        _TITLE_SMG = Game.GetLocalizedString("DM_WEP_SMG");
+        _TITLE_SMG = Game.GetLocalizedString("HUD_MG_SMG");
         _TITLE_SR = Game.GetLocalizedString("VAULT_WMENUI_5");
         _TITLE_SG = Game.GetLocalizedString("VRT_B_SGUN1");
         _TITLE_THROWN = Game.GetLocalizedString("GS_GROUP_7");
@@ -645,6 +645,10 @@ public class AddonWeapons : Script
                 if (WeapName == null || WeapName.Length < 3)
                 {
                     WeapName = weapon.WeaponData.GetNameLabel();
+                    if (WeapName == "WT_SNOWLAUNCHER")
+                    {
+                        WeapName = Game.GetLocalizedString("WT_SNOWLNCHR");
+                    }
                 }
 
                 BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
