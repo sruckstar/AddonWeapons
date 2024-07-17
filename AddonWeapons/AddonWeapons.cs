@@ -106,7 +106,7 @@ public class AddonWeapons : Script
     {
         config_settings = ScriptSettings.Load($"Scripts\\AddonWeapons\\settings.ini");
         _TITLE_MAIN = Game.GetLocalizedString("AD_AMMU_20");
-        _TITLE_HEAVY = Game.GetLocalizedString("GC_MENU46");
+        _TITLE_HEAVY = Game.GetLocalizedString("VAULT_WMENUI_6");
         _TITLE_MELEE = Game.GetLocalizedString("VAULT_WMENUI_8");
         _TITLE_MG = Game.GetLocalizedString("VAULT_WMENUI_3");
         _TITLE_PISTOLS = Game.GetLocalizedString("VAULT_WMENUI_9");
@@ -524,6 +524,29 @@ public class AddonWeapons : Script
         return rounds_m;
     }
 
+    private NativeItem CreateUnRegisterWeapon(uint weaponHash, string WeapName, string WeapDesc, int WeapCost)
+    {
+        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
+        string WeapCost_str = $"${WeapCost}";
+        NativeItem weap_m = new NativeItem(WeapName, WeapDesc, WeapCost_str);
+        weap_m.Activated += (sender, args) =>
+        {
+            if (Game.Player.Money < WeapCost)
+            {
+                GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
+            }
+            else
+            {
+                Game.Player.Money -= WeapCost;
+                Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
+            }
+            weap_m.AltTitle = "";
+            weap_m.RightBadgeSet = shop_gun;
+        };
+
+        return weap_m;
+    }
+
     private NativeItem CreateWeaponItem(DlcWeaponDataWithComponents weapon, string WeapName, string WeapDesc, string WeapCost, uint weaponHash)
     {
         BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
@@ -637,6 +660,11 @@ public class AddonWeapons : Script
         {
             foreach (var weapon in category.Value)
             {
+                if ((WeaponHash)weapon.WeaponData.weaponHash == WeaponHash.Railgun)
+                {
+                    continue;
+                }
+
                 string WeapName = Game.GetLocalizedString(weapon.WeaponData.GetNameLabel());
                 string WeapDesc = Game.GetLocalizedString(weapon.WeaponData.GetDescLabel());
                 string WeapCost = $"${weapon.WeaponData.weaponCost}";
@@ -698,6 +726,10 @@ public class AddonWeapons : Script
 
             }
         }
+
+        //Unregistered weapons in weapon_shop.meta must be manually added here
+
+
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
