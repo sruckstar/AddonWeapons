@@ -89,6 +89,25 @@ public class AddonWeapons : Script
 
     Keys menuOpenKey;
 
+    List<string> labels = new List<string>()
+    {
+        "GS_TITLE_0",
+        "VAULT_WMENUI_6",
+        "VAULT_WMENUI_8",
+        "VAULT_WMENUI_3",
+        "VAULT_WMENUI_9",
+        "VAULT_WMENUI_4",
+        "VAULT_WMENUI_2",
+        "HUD_MG_SMG",
+        "VAULT_WMENUI_5",
+        "VRT_B_SGUN1",
+        "VAULT_WMENUI_7",
+        "GSA_TYPE_R",
+        "SNK_FULL",
+        "GS_BROWSE_W",
+        "MPCT_SMON_04"
+    };
+
     public AddonWeapons()
     {
         SetLanguage();
@@ -104,22 +123,53 @@ public class AddonWeapons : Script
 
     private void SetLanguage()
     {
+
         config_settings = ScriptSettings.Load($"Scripts\\AddonWeapons\\settings.ini");
-        _TITLE_MAIN = Game.GetLocalizedString("AD_AMMU_20");
+
+        _TITLE_MAIN = Game.GetLocalizedString("GS_TITLE_0");
+        if (_TITLE_MAIN.Length < 3) _TITLE_MAIN = "WEAPONS";
+
         _TITLE_HEAVY = Game.GetLocalizedString("VAULT_WMENUI_6");
+        if (_TITLE_HEAVY.Length < 3) _TITLE_HEAVY = "Heavy Weapons";
+
         _TITLE_MELEE = Game.GetLocalizedString("VAULT_WMENUI_8");
+        if (_TITLE_MELEE.Length < 3) _TITLE_MELEE = "Melee Weapons";
+
         _TITLE_MG = Game.GetLocalizedString("VAULT_WMENUI_3");
+        if (_TITLE_MG.Length < 3) _TITLE_MG = "Machine Guns";
+
         _TITLE_PISTOLS = Game.GetLocalizedString("VAULT_WMENUI_9");
+        if (_TITLE_PISTOLS.Length < 3) _TITLE_PISTOLS = "Pistols";
+
         _TITLE_RIFLES = Game.GetLocalizedString("VAULT_WMENUI_4");
+        if (_TITLE_RIFLES.Length < 3) _TITLE_RIFLES = "Rifles";
+
         _TITLE_SHOTGUNS = Game.GetLocalizedString("VAULT_WMENUI_2");
+        if (_TITLE_SHOTGUNS.Length < 3) _TITLE_SHOTGUNS = "Shotguns";
+
         _TITLE_SMG = Game.GetLocalizedString("HUD_MG_SMG");
+        if (_TITLE_SMG.Length < 3) _TITLE_SMG = "Submachine Guns";
+
         _TITLE_SR = Game.GetLocalizedString("VAULT_WMENUI_5");
+        if (_TITLE_SR.Length < 3) _TITLE_SR = "Sniper Rifles";
+
         _TITLE_SG = Game.GetLocalizedString("VRT_B_SGUN1");
-        _TITLE_THROWN = Game.GetLocalizedString("GS_GROUP_7");
+        if (_TITLE_SG.Length < 3) _TITLE_SG = "Stun Guns";
+
+        _TITLE_THROWN = Game.GetLocalizedString("VAULT_WMENUI_7");
+        if (_TITLE_THROWN.Length < 3) _TITLE_THROWN = "Explosives";
+
         _ROUNDS = Game.GetLocalizedString("GSA_TYPE_R");
-        _MAX_ROUNDS = Game.GetLocalizedString("SNK_FULL");
+        if (_ROUNDS.Length < 3) _ROUNDS = "Rounds";
+
+        _MAX_ROUNDS = Game.GetLocalizedString("GS_FULL");
+        if (_MAX_ROUNDS.Length < 3) _MAX_ROUNDS = "FULL";
+
         _HELP_MESSAGE = "GS_BROWSE_W";
+
         _NO_MONEY = Game.GetLocalizedString("MPCT_SMON_04");
+        if (_NO_MONEY.Length < 3) _NO_MONEY = "~z~You'll need more cash to afford that.";
+
 
         menuOpenKey = config_settings.GetValue<Keys>("MENU", "MenuOpenKey", Keys.None);
     }
