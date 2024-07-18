@@ -7,6 +7,7 @@ using GTA;
 using GTA.Native;
 using GTA.Math;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization.Formatters.Binary;
 using LemonUI;
 using LemonUI.Scaleform;
 using LemonUI.Menus;
@@ -20,6 +21,7 @@ public class AddonWeapons : Script
     private Dictionary<uint, string> groupNames = new Dictionary<uint, string>();
     private Dictionary<uint, List<uint>> purchased_components = new Dictionary<uint, List<uint>>(); //weaponhash - componentHash (list)
     private Dictionary<uint, List<int>> purchased_tints = new Dictionary<uint, List<int>>(); //weaponhash - tintID (list)
+    private Dictionary<uint, List<uint>> install_components = new Dictionary<uint, List<uint>>(); //weaponhash - componentHash (list)
 
     ObjectPool pool;
     NativeMenu menu;
@@ -113,6 +115,7 @@ public class AddonWeapons : Script
 
     public AddonWeapons()
     {
+        LoadInventory();
         SetLanguage();
         InitializeCategories();
         InitializeMenu();
@@ -122,6 +125,28 @@ public class AddonWeapons : Script
         Tick += OnTick;
         KeyUp += onkeyup;
         Aborted += OnAborted;
+    }
+
+    private void LoadInventory()
+    {
+        purchased_components = DeserializeDictionary<uint, uint>($"Scripts\\AddonWeapons\\components.bin");
+        purchased_tints = DeserializeDictionary<uint, int>($"Scripts\\AddonWeapons\\tints.bin");
+        install_components = DeserializeDictionary<uint, uint>($"Scripts\\AddonWeapons\\install_components.bin");
+
+        List<uint> weaponsHashes = new List<uint>(purchased_components.Keys);
+
+        foreach (var weaponHash in weaponsHashes)
+        {
+            if (!Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash))
+            {
+                Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
+            }
+
+            foreach (var componentHash in purchased_components[weaponHash])
+            {
+                Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
+            }
+        }
     }
 
     private void SetLanguage()
@@ -433,25 +458,32 @@ public class AddonWeapons : Script
         weaponCategories[weaponTypeGroup].Add(weaponDataWithComponents);
     }
 
-    void SaveWeaponInInventory(uint weaponHash, uint componentHash)
+    void SaveWeaponInInventory()
     {
-        StreamWriter w = new StreamWriter($"Scripts\\AddonWeapons\\weaponsInventory.dat", true);
-        StreamReader r = new StreamReader($"Scripts\\AddonWeapons\\weaponsInventory.dat");
-        string s;
+        List<uint> weaponsHashes = new List<uint>(purchased_components.Keys);
 
-        if (componentHash == 0)
+        foreach (var weaponHash in weaponsHashes)
         {
-            w.WriteLine(weaponHash);
-        }
-        else
-        {
-            while ((s = r.ReadLine()) != null)
+            if (install_components.ContainsKey(weaponHash))
             {
-                // TO:DO
+                install_components[weaponHash].Clear();
             }
-            r.Close();
+            
+            if (purchased_components.ContainsKey(weaponHash))
+            {
+                foreach (var componentHash in purchased_components[weaponHash])
+                {
+                    if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, weaponHash, componentHash))
+                    {
+                        install_components[weaponHash].Add(componentHash);
+                    }
+                }
+            }
         }
 
+        SerializeDictionary(install_components, $"Scripts\\AddonWeapons\\install_components.bin");
+        SerializeDictionary(purchased_components, $"Scripts\\AddonWeapons\\components.bin");
+        SerializeDictionary(purchased_tints, $"Scripts\\AddonWeapons\\tints.bin");
     }
 
     NativeItem ActivateLivery(DlcWeaponDataWithComponents weapon, NativeItem item, int livery_id, uint weaponHash, BadgeSet badge)
@@ -762,6 +794,8 @@ public class AddonWeapons : Script
                 }
             }
         }
+
+        SaveWeaponInInventory();
     }
 
     private NativeItem CreateWeaponItem(DlcWeaponDataWithComponents weapon, string WeapName, string WeapDesc, string WeapCost, uint weaponHash)
@@ -845,6 +879,18 @@ public class AddonWeapons : Script
                 {
                     Game.Player.Money -= weapon.WeaponData.weaponCost;
                     Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
+                    
+                    if (!purchased_components.ContainsKey(weaponHash))
+                    {
+                        purchased_components[weaponHash] = new List<uint> { };
+                    }
+
+                    if (!purchased_tints.ContainsKey(weaponHash))
+                    {
+                        purchased_tints[weaponHash] = new List<int> { };
+                    }
+
+                    SaveWeaponInInventory();
                 }
 
                 weap_m.AltTitle = "";
@@ -970,6 +1016,34 @@ public class AddonWeapons : Script
         //Unregistered weapons in weapon_shop.meta must be manually added here
 
 
+    }
+
+    private static void SerializeDictionary<TKey, TValue>(Dictionary<TKey, List<TValue>> dictionary, string filePath)
+    {
+        using (FileStream stream = File.Create(filePath))
+        {
+            BinaryFormatter formatter = new BinaryFormatter();
+            formatter.Serialize(stream, dictionary);
+        }
+    }
+
+    private static Dictionary<TKey, List<TValue>> DeserializeDictionary<TKey, TValue>(string filePath)
+    {
+        Dictionary<TKey, List<TValue>> deserializedDictionary = null;
+        try
+        {
+            using (FileStream stream = File.OpenRead(filePath))
+            {
+                BinaryFormatter formatter = new BinaryFormatter();
+                deserializedDictionary = (Dictionary<TKey, List<TValue>>)formatter.Deserialize(stream);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error while deserializing dictionary: {ex.Message}");
+        }
+
+        return deserializedDictionary;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
