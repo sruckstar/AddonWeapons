@@ -86,6 +86,7 @@ public class AddonWeapons : Script
     ScriptSettings config_settings;
 
     int index_menu_count = -1;
+    uint current_weapon_hash = 0;
 
     Keys menuOpenKey;
 
@@ -451,7 +452,7 @@ public class AddonWeapons : Script
 
     }
 
-    NativeItem ActivateLivery(NativeItem item, int livery_id, uint weaponHash, BadgeSet badge)
+    NativeItem ActivateLivery(DlcWeaponDataWithComponents weapon, NativeItem item, int livery_id, uint weaponHash, BadgeSet badge)
     {
         item.Activated += (sender, args) =>
         {
@@ -463,14 +464,15 @@ public class AddonWeapons : Script
             {
                 Game.Player.Money -= 1000;
                 Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, livery_id);
-                item.AltTitle = "";
-                item.RightBadgeSet = badge;
+                List<uint> components_hashes = GetComponentsList(weapon);
+                List<int> components_cost = GetComponentsCost(weapon);
+                RefreshComponentMenu(ComponentMenu, components_hashes, components_cost);
             }
         };
         return item;
     }
 
-    private void CreateWeaponLivery(string WeapLabel, uint weaponHash)
+    private void CreateWeaponLivery(DlcWeaponDataWithComponents weapon, string WeapLabel, uint weaponHash)
     {
         List<string> tints = new List<string>();
         int count = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weaponHash);
@@ -492,7 +494,7 @@ public class AddonWeapons : Script
             for (int i = 0; i < tints.Count; i++)
             {
                 NativeItem tint_m = new NativeItem(tints[i], "", "$1000");
-                tint_m = ActivateLivery(tint_m, i, weaponHash, shop_gun);
+                tint_m = ActivateLivery(weapon, tint_m, i, weaponHash, shop_gun);
 
                 if (temp_index == i)
                 {
@@ -521,7 +523,7 @@ public class AddonWeapons : Script
             {
                 string LiveryName = Game.GetLocalizedString($"{tint_name}{i}");
                 NativeItem tint_m = new NativeItem(LiveryName, "", "$1000");
-                tint_m = ActivateLivery(tint_m, i, weaponHash, shop_gun);
+                tint_m = ActivateLivery(weapon, tint_m, i, weaponHash, shop_gun);
 
                 if (temp_index == i)
                 {
@@ -618,6 +620,89 @@ public class AddonWeapons : Script
         return weap_m;
     }
 
+    private List<uint> GetComponentsList(DlcWeaponDataWithComponents weapon)
+    {
+        List<uint> components_hashes = new List<uint>();
+
+        for (int i = 0; i < Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weapon.WeaponData.weaponHash); i++)
+        {
+            components_hashes.Add(0);
+        }
+        
+        foreach (var component in weapon.Components)
+        {
+            components_hashes.Add(component.componentHash);
+        }
+        
+        return components_hashes;
+    }
+
+    private List<int> GetComponentsCost(DlcWeaponDataWithComponents weapon)
+    {
+        List<int> components_cost = new List<int>();
+
+        for (int i = 0; i < Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weapon.WeaponData.weaponHash); i++)
+        {
+            components_cost.Add(1000);
+        }
+
+        foreach (var component in weapon.Components)
+        {
+            components_cost.Add(component.componentCost);
+        }
+
+        return components_cost;
+    }
+
+    private void RefreshComponentMenu(NativeMenu ComponentMenu, List<uint> components_hashes, List<int> components_cost)
+    {
+        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
+        List <NativeItem> items = ComponentMenu.Items;
+        int index = 0;
+        bool IsRounds = true;
+
+        foreach (var item in items)
+        {
+            if (IsRounds)
+            {
+                IsRounds = false;
+                continue;
+            }
+
+            int max_index = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, current_weapon_hash);
+            if (index < max_index)
+            {
+                if (Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, current_weapon_hash) == index)
+                {
+                    item.AltTitle = "";
+                    item.RightBadgeSet = shop_gun;
+                    index++;
+                }
+                else
+                {
+                    item.AltTitle = "$1000";
+                    item.RightBadgeSet = null;
+                    index++;
+                }
+            }
+            else
+            {
+                if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, current_weapon_hash, components_hashes[index]))
+                {
+                    item.AltTitle = "";
+                    item.RightBadgeSet = shop_gun;
+                    index++;
+                }
+                else
+                {
+                    item.AltTitle = $"${components_cost[index]}";
+                    item.RightBadgeSet = null;
+                    index++;
+                }
+            }
+        }
+    }
+
     private NativeItem CreateWeaponItem(DlcWeaponDataWithComponents weapon, string WeapName, string WeapDesc, string WeapCost, uint weaponHash)
     {
         BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
@@ -635,6 +720,7 @@ public class AddonWeapons : Script
                 {
                     if (Function.Call<uint>(Hash.GET_WEAPONTYPE_GROUP, weaponHash) != GROUP_MELEE)
                     {
+                        current_weapon_hash = weaponHash;
                         CloseAllMenus();
                         ComponentMenu.Clear();
                         int rounds = -1;
@@ -645,7 +731,7 @@ public class AddonWeapons : Script
                             string WeapLabel = weapon.WeaponData.GetNameLabel();
                             NativeItem rounds_m = CreateAmmoItem(defaultClipSize, ammoCost, weapon.WeaponData.ammoCost, weaponHash);
                             ComponentMenu.Add(rounds_m);
-                            CreateWeaponLivery(WeapLabel, weaponHash);
+                            CreateWeaponLivery(weapon, WeapLabel, weaponHash);
 
                             if ((WeaponHash)weaponHash == WeaponHash.StunGunMultiplayer)
                             {
@@ -653,7 +739,7 @@ public class AddonWeapons : Script
                                 uint componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_STUNGUN_VARMOD_BAIL");
                                 string componentCost = $"${weapon.WeaponData.ammoCost}";
                                 int componentCost_int = 1000;
-                                NativeItem comp_m = CreateComponentItem(CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                NativeItem comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
                                 ComponentMenu.Add(comp_m);
                             }
                         }
@@ -673,10 +759,10 @@ public class AddonWeapons : Script
                                     rounds = 1;
                                     NativeItem rounds_m = CreateAmmoItem(defaultClipSize, ammoCost, weapon.WeaponData.ammoCost, weaponHash);
                                     ComponentMenu.Add(rounds_m);
-                                    CreateWeaponLivery(WeapLabel, weaponHash);
+                                    CreateWeaponLivery(weapon, WeapLabel, weaponHash);
                                 }
 
-                                NativeItem comp_m = CreateComponentItem(componentName, componentCost, component.componentCost, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                NativeItem comp_m = CreateComponentItem(weapon, componentName, componentCost, component.componentCost, componentHash, weaponHash, defaultClipSize, ammoCost);
 
                                 if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character.Handle, weaponHash, componentHash))
                                 {
@@ -702,10 +788,8 @@ public class AddonWeapons : Script
         return weap_m;
     }
 
-    private NativeItem CreateComponentItem(string componentName, string componentCost, int cost_int, uint componentHash, uint weaponHash, int defaultClipSize, string ammoCost)
+    private NativeItem CreateComponentItem(DlcWeaponDataWithComponents weapon, string componentName, string componentCost, int cost_int, uint componentHash, uint weaponHash, int defaultClipSize, string ammoCost)
     {
-        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
-
         NativeItem comp_m = new NativeItem(componentName, "", componentCost);
         comp_m.Activated += (sender, args) =>
         {
@@ -718,8 +802,10 @@ public class AddonWeapons : Script
                 Game.Player.Money -= cost_int;
                 Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
 
-                comp_m.AltTitle = "";
-                comp_m.RightBadgeSet = shop_gun;
+                List<uint> components_hashes = GetComponentsList(weapon);
+                List<int> components_cost = GetComponentsCost(weapon);
+                RefreshComponentMenu(ComponentMenu, components_hashes, components_cost);
+
             }
         };
         return comp_m;
