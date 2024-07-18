@@ -19,6 +19,7 @@ public class AddonWeapons : Script
     private Dictionary<uint, List<DlcWeaponDataWithComponents>> weaponCategories = new Dictionary<uint, List<DlcWeaponDataWithComponents>>();
     private Dictionary<uint, string> groupNames = new Dictionary<uint, string>();
     private Dictionary<uint, List<uint>> purchased_components = new Dictionary<uint, List<uint>>(); //weaponhash - componentHash (list)
+    private Dictionary<uint, List<int>> purchased_tints = new Dictionary<uint, List<int>>(); //weaponhash - tintID (list)
 
     ObjectPool pool;
     NativeMenu menu;
@@ -463,9 +464,16 @@ public class AddonWeapons : Script
             }
             else
             {
-                Game.Player.Money -= 1000;
+                if (purchased_tints[weaponHash].Contains(livery_id))
+                {
+                    Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, livery_id);
+                }
+                else
+                {
+                    Game.Player.Money -= 1000;
+                    purchased_tints[weaponHash].Add(livery_id);
+                }
 
-                Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, livery_id);
                 List<uint> components_hashes = GetComponentsList(weapon);
                 List<int> components_cost = GetComponentsCost(weapon);
                 RefreshComponentMenu(ComponentMenu, components_hashes, components_cost);
@@ -677,21 +685,57 @@ public class AddonWeapons : Script
             {
                 if (Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, current_weapon_hash) == index)
                 {
+                    if (!purchased_tints.ContainsKey(current_weapon_hash))
+                    {
+                        purchased_tints[current_weapon_hash] = new List<int> { };
+                    }
+
+                    if (!purchased_tints[current_weapon_hash].Contains(index))
+                    {
+                        purchased_tints[current_weapon_hash].Add(index);
+                    }
+
                     item.AltTitle = "";
                     item.RightBadgeSet = shop_gun;
                     index++;
                 }
                 else
                 {
-                    item.AltTitle = "$1000";
-                    item.RightBadgeSet = null;
-                    index++;
+                    if (!purchased_tints.ContainsKey(current_weapon_hash))
+                    {
+                        purchased_tints[current_weapon_hash] = new List<int> { };
+                    }
+                    else
+                    {
+                        if (purchased_tints[current_weapon_hash].Contains(index))
+                        {
+                            item.AltTitle = "";
+                            item.RightBadgeSet = shop_tick;
+                            index++;
+                        }
+                        else
+                        {
+                            item.AltTitle = "$1000";
+                            item.RightBadgeSet = null;
+                            index++;
+                        }
+                    }
                 }
             }
             else
             {
                 if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, current_weapon_hash, components_hashes[index]))
                 {
+                    if (!purchased_components.ContainsKey(current_weapon_hash))
+                    {
+                        purchased_components[current_weapon_hash] = new List<uint> { };
+                    }
+
+                    if (!purchased_components[current_weapon_hash].Contains(components_hashes[index]))
+                    {
+                        purchased_components[current_weapon_hash].Add(components_hashes[index]);
+                    }
+
                     item.AltTitle = "";
                     item.RightBadgeSet = shop_gun;
                     index++;
