@@ -18,6 +18,7 @@ public class AddonWeapons : Script
 {
     private Dictionary<uint, List<DlcWeaponDataWithComponents>> weaponCategories = new Dictionary<uint, List<DlcWeaponDataWithComponents>>();
     private Dictionary<uint, string> groupNames = new Dictionary<uint, string>();
+    private Dictionary<uint, List<uint>> purchased_components = new Dictionary<uint, List<uint>>(); //weaponhash - componentHash (list)
 
     ObjectPool pool;
     NativeMenu menu;
@@ -463,6 +464,7 @@ public class AddonWeapons : Script
             else
             {
                 Game.Player.Money -= 1000;
+
                 Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, livery_id);
                 List<uint> components_hashes = GetComponentsList(weapon);
                 List<int> components_cost = GetComponentsCost(weapon);
@@ -657,6 +659,7 @@ public class AddonWeapons : Script
     private void RefreshComponentMenu(NativeMenu ComponentMenu, List<uint> components_hashes, List<int> components_cost)
     {
         BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
+        BadgeSet shop_tick = CreateBafgeFromItem("commonmenu", "shop_tick_icon", "commonmenu", "shop_tick_icon");
         List <NativeItem> items = ComponentMenu.Items;
         int index = 0;
         bool IsRounds = true;
@@ -695,9 +698,23 @@ public class AddonWeapons : Script
                 }
                 else
                 {
-                    item.AltTitle = $"${components_cost[index]}";
-                    item.RightBadgeSet = null;
-                    index++;
+                    if (!purchased_components.ContainsKey(current_weapon_hash))
+                    {
+                        purchased_components[current_weapon_hash] = new List<uint> { };
+                    }
+
+                    if (purchased_components[current_weapon_hash].Contains(components_hashes[index]))
+                    {
+                        item.AltTitle = "";
+                        item.RightBadgeSet = shop_tick;
+                        index++;
+                    }
+                    else
+                    {
+                        item.AltTitle = $"${components_cost[index]}";
+                        item.RightBadgeSet = null;
+                        index++;
+                    }
                 }
             }
         }
@@ -771,6 +788,11 @@ public class AddonWeapons : Script
                                 }
                                 ComponentMenu.Add(comp_m);
                             }
+
+                            List<uint> components_hashes = GetComponentsList(weapon);
+                            List<int> components_cost = GetComponentsCost(weapon);
+                            RefreshComponentMenu(ComponentMenu, components_hashes, components_cost);
+
                         }
                         ComponentMenu.Visible = true;
                     }
@@ -793,20 +815,30 @@ public class AddonWeapons : Script
         NativeItem comp_m = new NativeItem(componentName, "", componentCost);
         comp_m.Activated += (sender, args) =>
         {
-            if (Game.Player.Money < cost_int)
+            if (!purchased_components.ContainsKey(weaponHash))
             {
-                GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
+                purchased_components[weaponHash] = new List<uint> { };
+            }
+
+            if (purchased_components[weaponHash].Contains(componentHash))
+            {
+                Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
             }
             else
             {
-                Game.Player.Money -= cost_int;
-                Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
-
-                List<uint> components_hashes = GetComponentsList(weapon);
-                List<int> components_cost = GetComponentsCost(weapon);
-                RefreshComponentMenu(ComponentMenu, components_hashes, components_cost);
-
+                if (Game.Player.Money < cost_int)
+                {
+                    GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
+                }
+                else
+                {
+                    Game.Player.Money -= cost_int;
+                    purchased_components[weaponHash].Add(componentHash);
+                }
             }
+            List<uint> components_hashes = GetComponentsList(weapon);
+            List<int> components_cost = GetComponentsCost(weapon);
+            RefreshComponentMenu(ComponentMenu, components_hashes, components_cost);
         };
         return comp_m;
     }
