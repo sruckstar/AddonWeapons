@@ -430,6 +430,27 @@ public class AddonWeapons : Script
         weaponCategories[weaponTypeGroup].Add(weaponDataWithComponents);
     }
 
+    void SaveWeaponInInventory(uint weaponHash, uint componentHash)
+    {
+        StreamWriter w = new StreamWriter($"Scripts\\AddonWeapons\\weaponsInventory.dat", true);
+        StreamReader r = new StreamReader($"Scripts\\AddonWeapons\\weaponsInventory.dat");
+        string s;
+
+        if (componentHash == 0)
+        {
+            w.WriteLine(weaponHash);
+        }
+        else
+        {
+            while ((s = r.ReadLine()) != null)
+            {
+                // TO:DO
+            }
+            r.Close();
+        }
+
+    }
+
     NativeItem ActivateLivery(NativeItem item, int livery_id, uint weaponHash, BadgeSet badge)
     {
         item.Activated += (sender, args) =>
