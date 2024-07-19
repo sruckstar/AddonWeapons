@@ -506,6 +506,7 @@ public class AddonWeapons : Script
     {
         if (e.KeyCode == menuOpenKey)
         {
+            RefreshMenus();
             menu.Visible = true;
         }
     }
@@ -527,6 +528,7 @@ public class AddonWeapons : Script
 
             if (Function.Call<bool>(Hash.IS_CONTROL_JUST_PRESSED, 0, 51))
             {
+                RefreshMenus();
                 menu.Visible = true;
             }
         }
@@ -982,22 +984,7 @@ public class AddonWeapons : Script
                                 }
                                 ComponentMenu.Add(comp_m);
                             }
-                            /*/
-                            if (!purchased_components[player].ContainsKey(weaponHash))
-                            {
-                                purchased_components[player].Add(weaponHash, new List<uint> { });
-                            }
-
-                            if (!purchased_tints[player].ContainsKey(weaponHash))
-                            {
-                                purchased_tints[player].Add(weaponHash, new List<int> { });
-                            }
-
-                            if (!install_components[player].ContainsKey(weaponHash))
-                            {
-                                install_components[player].Add(weaponHash, new List<uint> { });
-                            }
-                            /*/
+                            
                             List<uint> components_hashes = GetComponentsList(weapon);
                             List<int> components_cost = GetComponentsCost(weapon);
                             RefreshComponentMenu(ComponentMenu, components_hashes, components_cost);
@@ -1010,17 +997,6 @@ public class AddonWeapons : Script
                 {
                     Game.Player.Money -= weapon.WeaponData.weaponCost;
                     Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
-                    /*/
-                    if (!purchased_components[player].ContainsKey(weaponHash))
-                    {
-                        purchased_components[player][weaponHash] = new List<uint> { };
-                    }
-
-                    if (!purchased_tints[player].ContainsKey(weaponHash))
-                    {
-                        purchased_tints[player][weaponHash] = new List<int> { };
-                    }
-                    /*/
                     SaveWeaponInInventory();
                 }
 
@@ -1072,6 +1048,23 @@ public class AddonWeapons : Script
             RefreshComponentMenu(ComponentMenu, components_hashes, components_cost);
         };
         return comp_m;
+    }
+
+    private void RefreshMenus()
+    {
+        HeavyMenu.Clear();
+        MeleeMenu.Clear();
+        MachineGunsMenu.Clear();
+        PistolsMenu.Clear();
+        RiflesMenu.Clear();
+        ShotgunsMenu.Clear();
+        SMGsMenu.Clear();
+        SniperRiflesMenu.Clear();
+        StunGunMenu.Clear();
+        ThrownMenu.Clear();
+
+        SetMenuItems();
+
     }
 
     private void SetMenuItems()
