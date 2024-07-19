@@ -37,6 +37,10 @@ public class AddonWeapons : Script
     NativeMenu ThrownMenu;
     NativeMenu ComponentMenu;
 
+    const int COMPONENTS_DICT = 0;
+    const int INSTALLCOMP_DICT = 1;
+    const int TINTS_DICT = 2;
+
     const uint GROUP_DIGISCANNER = 3539449195u;
     const uint GROUP_FIREEXTINGUISHER = 4257178988u;
     const uint GROUP_HACKINGDEVICE = 1175761940u;
@@ -393,6 +397,98 @@ public class AddonWeapons : Script
         }
     }
 
+    private void AddDictValue(int type_dict, uint player, uint weaponHash, uint componentHash, int tint)
+    {
+        switch(type_dict)
+        {
+            case COMPONENTS_DICT:
+                if (!purchased_components[player].ContainsKey(weaponHash))
+                {
+                    purchased_components[player].Add(weaponHash, new List<uint> { });
+                }
+                purchased_components[player][weaponHash].Add(componentHash);
+                break;
+
+            case INSTALLCOMP_DICT:
+                if(!install_components[player].ContainsKey(weaponHash))
+                {
+                    install_components[player].Add(weaponHash, new List<uint> { });
+                }
+                install_components[player][weaponHash].Add(componentHash);
+                break;
+
+            case TINTS_DICT:
+                if (!purchased_tints[player].ContainsKey(weaponHash))
+                {
+                    purchased_tints[player].Add(weaponHash, new List<int> { });
+                }
+                purchased_tints[player][weaponHash].Add(tint);
+                break;
+        }
+    }
+
+    private void RemoveDictValue(int type_dict, uint player, uint weaponHash, uint componentHash, int tint)
+    {
+        switch (type_dict)
+        {
+            case COMPONENTS_DICT:
+                if (!purchased_components[player].ContainsKey(weaponHash))
+                {
+                    purchased_components[player].Add(weaponHash, new List<uint> { });
+                }
+                purchased_components[player][weaponHash].Remove(componentHash);
+                break;
+
+            case INSTALLCOMP_DICT:
+                if (!install_components[player].ContainsKey(weaponHash))
+                {
+                    install_components[player].Add(weaponHash, new List<uint> { });
+                }
+                install_components[player][weaponHash].Remove(componentHash);
+                break;
+
+            case TINTS_DICT:
+                if (!purchased_tints[player].ContainsKey(weaponHash))
+                {
+                    purchased_tints[player].Add(weaponHash, new List<int> { });
+                }
+                purchased_tints[player][weaponHash].Remove(tint);
+                break;
+        }
+    }
+
+    private bool ValueContains(int type_dict, uint player, uint weaponHash, uint componentHash, int tint)
+    {
+        bool result = false;
+        switch (type_dict)
+        {
+            case COMPONENTS_DICT:
+                if (!purchased_components[player].ContainsKey(weaponHash))
+                {
+                    purchased_components[player].Add(weaponHash, new List<uint> { });
+                }
+                if (purchased_components[player][weaponHash].Contains(componentHash)) result = true;
+                break;
+
+            case INSTALLCOMP_DICT:
+                if (!install_components[player].ContainsKey(weaponHash))
+                {
+                    install_components[player].Add(weaponHash, new List<uint> { });
+                }
+                if (install_components[player][weaponHash].Contains(componentHash)) result = true;
+                break;
+
+            case TINTS_DICT:
+                if (!purchased_tints[player].ContainsKey(weaponHash))
+                {
+                    purchased_tints[player].Add(weaponHash, new List<int> { });
+                }
+                if (purchased_tints[player][weaponHash].Contains(tint)) result = true;
+                break;
+        }
+        return result;
+    }
+
     private void DeleteAmmoBoxes()
     {
         if (box1 != null && box1.Exists())
@@ -527,6 +623,7 @@ public class AddonWeapons : Script
 
     void SaveWeaponInInventory()
     {
+        
         uint player = (uint)Game.Player.Character.Model.Hash;
         List<uint> weaponsHashes = new List<uint>(purchased_components[player].Keys);
 
@@ -538,8 +635,7 @@ public class AddonWeapons : Script
                 {
                     if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, weaponHash, componentHash))
                     {
-                        
-                        install_components[player][weaponHash].Add(componentHash);
+                        AddDictValue(INSTALLCOMP_DICT, player, weaponHash, componentHash, 0);
                     }
                 }
             }
@@ -561,14 +657,14 @@ public class AddonWeapons : Script
             }
             else
             {
-                if (purchased_tints[player][weaponHash].Contains(livery_id))
+                if (ValueContains(TINTS_DICT, player, weaponHash, 0, livery_id))
                 {
                     Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, livery_id);
                 }
                 else
                 {
                     Game.Player.Money -= 1000;
-                    purchased_tints[player][weaponHash].Add(livery_id);
+                    AddDictValue(TINTS_DICT, player, weaponHash, 0, livery_id);
                 }
 
                 List<uint> components_hashes = GetComponentsList(weapon);
@@ -704,29 +800,6 @@ public class AddonWeapons : Script
         return rounds_m;
     }
 
-    private NativeItem CreateUnRegisterWeapon(uint weaponHash, string WeapName, string WeapDesc, int WeapCost)
-    {
-        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
-        string WeapCost_str = $"${WeapCost}";
-        NativeItem weap_m = new NativeItem(WeapName, WeapDesc, WeapCost_str);
-        weap_m.Activated += (sender, args) =>
-        {
-            if (Game.Player.Money < WeapCost)
-            {
-                GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
-            }
-            else
-            {
-                Game.Player.Money -= WeapCost;
-                Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
-            }
-            weap_m.AltTitle = "";
-            weap_m.RightBadgeSet = shop_gun;
-        };
-
-        return weap_m;
-    }
-
     private List<uint> GetComponentsList(DlcWeaponDataWithComponents weapon)
     {
         List<uint> components_hashes = new List<uint>();
@@ -783,18 +856,17 @@ public class AddonWeapons : Script
             {
                 if (Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, current_weapon_hash) == index)
                 {
-                    if (!purchased_tints[player][current_weapon_hash].Contains(index))
+                    if (!ValueContains(TINTS_DICT, player, current_weapon_hash, 0, index))
                     {
-                        purchased_tints[player][current_weapon_hash].Add(index);
+                        AddDictValue(TINTS_DICT, player, current_weapon_hash, 0, index);
                     }
-
                     item.AltTitle = "";
                     item.RightBadgeSet = shop_gun;
                     index++;
                 }
                 else
                 {
-                    if (purchased_tints[player][current_weapon_hash].Contains(index))
+                    if (ValueContains(TINTS_DICT, player, current_weapon_hash, 0, index))
                     {
                         item.AltTitle = "";
                         item.RightBadgeSet = shop_tick;
@@ -812,9 +884,9 @@ public class AddonWeapons : Script
             {
                 if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, current_weapon_hash, components_hashes[index]))
                 {
-                    if (!purchased_components[player][current_weapon_hash].Contains(components_hashes[index]))
+                    if (ValueContains(COMPONENTS_DICT, player, current_weapon_hash, components_hashes[index], 0))
                     {
-                        purchased_components[player][current_weapon_hash].Add(components_hashes[index]);
+                        AddDictValue(COMPONENTS_DICT, player, current_weapon_hash, components_hashes[index], 0);
                     }
 
                     item.AltTitle = "";
@@ -823,7 +895,7 @@ public class AddonWeapons : Script
                 }
                 else
                 {
-                    if (purchased_components[player][current_weapon_hash].Contains(components_hashes[index]))
+                    if (ValueContains(COMPONENTS_DICT, player, current_weapon_hash, components_hashes[index], 0))
                     {
                         item.AltTitle = "";
                         item.RightBadgeSet = shop_tick;
@@ -910,7 +982,7 @@ public class AddonWeapons : Script
                                 }
                                 ComponentMenu.Add(comp_m);
                             }
-
+                            /*/
                             if (!purchased_components[player].ContainsKey(weaponHash))
                             {
                                 purchased_components[player].Add(weaponHash, new List<uint> { });
@@ -925,7 +997,7 @@ public class AddonWeapons : Script
                             {
                                 install_components[player].Add(weaponHash, new List<uint> { });
                             }
-
+                            /*/
                             List<uint> components_hashes = GetComponentsList(weapon);
                             List<int> components_cost = GetComponentsCost(weapon);
                             RefreshComponentMenu(ComponentMenu, components_hashes, components_cost);
@@ -938,7 +1010,7 @@ public class AddonWeapons : Script
                 {
                     Game.Player.Money -= weapon.WeaponData.weaponCost;
                     Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
-                    
+                    /*/
                     if (!purchased_components[player].ContainsKey(weaponHash))
                     {
                         purchased_components[player][weaponHash] = new List<uint> { };
@@ -948,7 +1020,7 @@ public class AddonWeapons : Script
                     {
                         purchased_tints[player][weaponHash] = new List<int> { };
                     }
-
+                    /*/
                     SaveWeaponInInventory();
                 }
 
@@ -965,24 +1037,19 @@ public class AddonWeapons : Script
         NativeItem comp_m = new NativeItem(componentName, "", componentCost);
         comp_m.Activated += (sender, args) =>
         {
-            if (!purchased_components[player].ContainsKey(weaponHash))
-            {
-                purchased_components[player][weaponHash] = new List<uint> { };
-            }
-
-            if (purchased_components[player][weaponHash].Contains(componentHash))
+            if (ValueContains(COMPONENTS_DICT, player, weaponHash, componentHash, 0))
             {
                 if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, weaponHash, componentHash))
                 {
                     Function.Call(Hash.REMOVE_WEAPON_COMPONENT_FROM_PED, Game.Player.Character.Handle, weaponHash, componentHash);
-                    install_components[player][weaponHash].Remove(componentHash);
+                    RemoveDictValue(INSTALLCOMP_DICT, player, weaponHash, componentHash, 0);
                     SaveWeaponInInventory();
                 }
                 else
                 {
-                    if (!install_components[player][weaponHash].Contains(componentHash))
+                    if (!ValueContains(INSTALLCOMP_DICT, player, weaponHash, componentHash, 0))
                     {
-                        install_components[player][weaponHash].Add(componentHash);
+                        AddDictValue(INSTALLCOMP_DICT, player, weaponHash, componentHash, 0);
                     }
 
                     Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
@@ -997,7 +1064,7 @@ public class AddonWeapons : Script
                 else
                 {
                     Game.Player.Money -= cost_int;
-                    purchased_components[player][weaponHash].Add(componentHash);
+                    AddDictValue(COMPONENTS_DICT, player, weaponHash, componentHash, 0);
                 }
             }
             List<uint> components_hashes = GetComponentsList(weapon);
