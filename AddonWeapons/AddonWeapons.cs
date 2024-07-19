@@ -19,9 +19,9 @@ public class AddonWeapons : Script
 {
     private Dictionary<uint, List<DlcWeaponDataWithComponents>> weaponCategories = new Dictionary<uint, List<DlcWeaponDataWithComponents>>();
     private Dictionary<uint, string> groupNames = new Dictionary<uint, string>();
-    private Dictionary<uint, List<uint>> purchased_components = new Dictionary<uint, List<uint>>(); //weaponhash - componentHash (list)
-    private Dictionary<uint, List<int>> purchased_tints = new Dictionary<uint, List<int>>(); //weaponhash - tintID (list)
-    private Dictionary<uint, List<uint>> install_components = new Dictionary<uint, List<uint>>(); //weaponhash - componentHash (list)
+    private Dictionary<uint, Dictionary<uint, List<uint>>> purchased_components = new Dictionary<uint, Dictionary<uint, List<uint>>>();
+    private Dictionary<uint, Dictionary<uint, List<int>>> purchased_tints = new Dictionary<uint, Dictionary<uint, List<int>>>();
+    private Dictionary<uint, Dictionary<uint, List<uint>>> install_components = new Dictionary<uint, Dictionary<uint, List<uint>>>();
 
     ObjectPool pool;
     NativeMenu menu;
@@ -89,8 +89,11 @@ public class AddonWeapons : Script
     ScriptSettings config;
     ScriptSettings config_settings;
 
-    int index_menu_count = -1;
+    bool SP0_loaded = false;
+    bool SP1_loaded = false;
+    bool SP2_loaded = false;
     uint current_weapon_hash = 0;
+
 
     Keys menuOpenKey;
 
@@ -115,7 +118,6 @@ public class AddonWeapons : Script
 
     public AddonWeapons()
     {
-        LoadInventory();
         SetLanguage();
         InitializeCategories();
         InitializeMenu();
@@ -129,42 +131,87 @@ public class AddonWeapons : Script
 
     private void LoadInventory()
     {
-        purchased_components = DeserializeDictionary<uint, uint>($"Scripts\\AddonWeapons\\components.bin");
-        purchased_tints = DeserializeDictionary<uint, int>($"Scripts\\AddonWeapons\\tints.bin");
-        install_components = DeserializeDictionary<uint, uint>($"Scripts\\AddonWeapons\\install_components.bin");
+        uint player = (uint)Game.Player.Character.Model.Hash;
 
-        List<uint> weaponsHashes = new List<uint>(purchased_components.Keys);
+        if (File.Exists($"Scripts\\AddonWeapons\\components.bin"))
+        {
+            purchased_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\components.bin");
+        }
+        if (File.Exists($"Scripts\\AddonWeapons\\tints.bin"))
+        {
+            purchased_tints = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\tints.bin");
+        }
+        if (File.Exists($"Scripts\\AddonWeapons\\install_components.bin"))
+        {
+            install_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\install_components.bin");
+        }
+
+        if (!purchased_components.ContainsKey(player))
+        {
+            purchased_components[player] = new Dictionary<uint, List<uint>>();
+        }
+        if (!purchased_tints.ContainsKey(player))
+        {
+            purchased_tints[player] = new Dictionary<uint, List<int>>();
+        }
+        if (!install_components.ContainsKey(player))
+        {
+            install_components[player] = new Dictionary<uint, List<uint>>();
+        }
+
+        List<uint> weaponsHashes = new List<uint>(purchased_components[player].Keys);
+        if (weaponsHashes.Count == 0) return;
 
         foreach (var weaponHash in weaponsHashes)
         {
-            if (!purchased_components.ContainsKey(weaponHash))
+            if (!purchased_components[player].ContainsKey(weaponHash))
             {
-                purchased_components.Add(weaponHash, new List<uint> { });
+                purchased_components[player][weaponHash] = new List<uint> { };
             }
 
-            if (!purchased_tints.ContainsKey(weaponHash))
+            if (!purchased_tints[player].ContainsKey(weaponHash))
             {
-                purchased_tints.Add(weaponHash, new List<int> { });
+                purchased_tints[player][weaponHash] = new List<int> { };
             }
 
-            if (!install_components.ContainsKey(weaponHash))
+            if (!install_components[player].ContainsKey(weaponHash))
             {
-                install_components.Add(weaponHash, new List<uint> { });
+                install_components[player][weaponHash] = new List<uint> { };
             }
-
 
             if (!Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash))
             {
                 Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
             }
 
-            foreach (var componentHash in purchased_components[weaponHash])
+            foreach (var componentHash in purchased_components[player][weaponHash])
             {
-                if (install_components[weaponHash].Contains(componentHash))
+                if (install_components[player][weaponHash].Contains(componentHash))
                 {
                     Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
                 }
             }
+        }
+    }
+
+    private void WaitLoadedInventory()
+    {
+        if (!SP0_loaded && Game.Player.Character.Model.Hash == new Model("player_zero").Hash)
+        {
+            LoadInventory();
+            SP0_loaded = true;
+        }
+
+        if (!SP1_loaded && Game.Player.Character.Model.Hash == new Model("player_one").Hash)
+        {
+            LoadInventory();
+            SP1_loaded = true;
+        }
+
+        if (!SP2_loaded && Game.Player.Character.Model.Hash == new Model("player_two").Hash)
+        {
+            LoadInventory();
+            SP2_loaded = true;
         }
     }
 
@@ -371,6 +418,7 @@ public class AddonWeapons : Script
     {
         pool.Process();
         CreateAmmoBoxesThisFrame();
+        WaitLoadedInventory();
 
         if (Game.Player.Character.Position.DistanceTo(box_pos_1) < 1.5f || Game.Player.Character.Position.DistanceTo(box_pos_2) < 1.5f)
         {
@@ -479,29 +527,32 @@ public class AddonWeapons : Script
 
     void SaveWeaponInInventory()
     {
-        List<uint> weaponsHashes = new List<uint>(purchased_components.Keys);
+        uint player = (uint)Game.Player.Character.Model.Hash;
+        List<uint> weaponsHashes = new List<uint>(purchased_components[player].Keys);
 
         foreach (var weaponHash in weaponsHashes)
         {
-            if (purchased_components.ContainsKey(weaponHash))
+            if (purchased_components[player].ContainsKey(weaponHash))
             {
-                foreach (var componentHash in purchased_components[weaponHash])
+                foreach (var componentHash in purchased_components[player][weaponHash])
                 {
                     if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, weaponHash, componentHash))
                     {
-                        install_components[weaponHash].Add(componentHash);
+                        
+                        install_components[player][weaponHash].Add(componentHash);
                     }
                 }
             }
         }
 
-        SerializeDictionary(install_components, $"Scripts\\AddonWeapons\\install_components.bin");
-        SerializeDictionary(purchased_components, $"Scripts\\AddonWeapons\\components.bin");
-        SerializeDictionary(purchased_tints, $"Scripts\\AddonWeapons\\tints.bin");
+        SerializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\components.bin", purchased_components);
+        SerializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\tints.bin", purchased_tints);
+        SerializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\install_components.bin", install_components);
     }
 
     NativeItem ActivateLivery(DlcWeaponDataWithComponents weapon, NativeItem item, int livery_id, uint weaponHash, BadgeSet badge)
     {
+        uint player = (uint)Game.Player.Character.Model.Hash;
         item.Activated += (sender, args) =>
         {
             if (Game.Player.Money < 1000)
@@ -510,14 +561,14 @@ public class AddonWeapons : Script
             }
             else
             {
-                if (purchased_tints[weaponHash].Contains(livery_id))
+                if (purchased_tints[player][weaponHash].Contains(livery_id))
                 {
                     Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, livery_id);
                 }
                 else
                 {
                     Game.Player.Money -= 1000;
-                    purchased_tints[weaponHash].Add(livery_id);
+                    purchased_tints[player][weaponHash].Add(livery_id);
                 }
 
                 List<uint> components_hashes = GetComponentsList(weapon);
@@ -712,6 +763,7 @@ public class AddonWeapons : Script
 
     private void RefreshComponentMenu(NativeMenu ComponentMenu, List<uint> components_hashes, List<int> components_cost)
     {
+        uint player = (uint)Game.Player.Character.Model.Hash;
         BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
         BadgeSet shop_tick = CreateBafgeFromItem("commonmenu", "shop_tick_icon", "commonmenu", "shop_tick_icon");
         List <NativeItem> items = ComponentMenu.Items;
@@ -731,9 +783,9 @@ public class AddonWeapons : Script
             {
                 if (Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, current_weapon_hash) == index)
                 {
-                    if (!purchased_tints[current_weapon_hash].Contains(index))
+                    if (!purchased_tints[player][current_weapon_hash].Contains(index))
                     {
-                        purchased_tints[current_weapon_hash].Add(index);
+                        purchased_tints[player][current_weapon_hash].Add(index);
                     }
 
                     item.AltTitle = "";
@@ -742,7 +794,7 @@ public class AddonWeapons : Script
                 }
                 else
                 {
-                    if (purchased_tints[current_weapon_hash].Contains(index))
+                    if (purchased_tints[player][current_weapon_hash].Contains(index))
                     {
                         item.AltTitle = "";
                         item.RightBadgeSet = shop_tick;
@@ -760,9 +812,9 @@ public class AddonWeapons : Script
             {
                 if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, current_weapon_hash, components_hashes[index]))
                 {
-                    if (!purchased_components[current_weapon_hash].Contains(components_hashes[index]))
+                    if (!purchased_components[player][current_weapon_hash].Contains(components_hashes[index]))
                     {
-                        purchased_components[current_weapon_hash].Add(components_hashes[index]);
+                        purchased_components[player][current_weapon_hash].Add(components_hashes[index]);
                     }
 
                     item.AltTitle = "";
@@ -771,7 +823,7 @@ public class AddonWeapons : Script
                 }
                 else
                 {
-                    if (purchased_components[current_weapon_hash].Contains(components_hashes[index]))
+                    if (purchased_components[player][current_weapon_hash].Contains(components_hashes[index]))
                     {
                         item.AltTitle = "";
                         item.RightBadgeSet = shop_tick;
@@ -793,7 +845,7 @@ public class AddonWeapons : Script
     private NativeItem CreateWeaponItem(DlcWeaponDataWithComponents weapon, string WeapName, string WeapDesc, string WeapCost, uint weaponHash)
     {
         BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
-
+        uint player = (uint)Game.Player.Character.Model.Hash;
         NativeItem weap_m = new NativeItem(WeapName, WeapDesc, WeapCost);
         weap_m.Activated += (sender, args) =>
         {
@@ -859,19 +911,19 @@ public class AddonWeapons : Script
                                 ComponentMenu.Add(comp_m);
                             }
 
-                            if (!purchased_components.ContainsKey(weaponHash))
+                            if (!purchased_components[player].ContainsKey(weaponHash))
                             {
-                                purchased_components.Add(weaponHash, new List<uint> { });
+                                purchased_components[player].Add(weaponHash, new List<uint> { });
                             }
 
-                            if (!purchased_tints.ContainsKey(weaponHash))
+                            if (!purchased_tints[player].ContainsKey(weaponHash))
                             {
-                                purchased_tints.Add(weaponHash, new List<int> { });
+                                purchased_tints[player].Add(weaponHash, new List<int> { });
                             }
 
-                            if (!install_components.ContainsKey(weaponHash))
+                            if (!install_components[player].ContainsKey(weaponHash))
                             {
-                                install_components.Add(weaponHash, new List<uint> { });
+                                install_components[player].Add(weaponHash, new List<uint> { });
                             }
 
                             List<uint> components_hashes = GetComponentsList(weapon);
@@ -887,14 +939,14 @@ public class AddonWeapons : Script
                     Game.Player.Money -= weapon.WeaponData.weaponCost;
                     Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
                     
-                    if (!purchased_components.ContainsKey(weaponHash))
+                    if (!purchased_components[player].ContainsKey(weaponHash))
                     {
-                        purchased_components[weaponHash] = new List<uint> { };
+                        purchased_components[player][weaponHash] = new List<uint> { };
                     }
 
-                    if (!purchased_tints.ContainsKey(weaponHash))
+                    if (!purchased_tints[player].ContainsKey(weaponHash))
                     {
-                        purchased_tints[weaponHash] = new List<int> { };
+                        purchased_tints[player][weaponHash] = new List<int> { };
                     }
 
                     SaveWeaponInInventory();
@@ -909,27 +961,28 @@ public class AddonWeapons : Script
 
     private NativeItem CreateComponentItem(DlcWeaponDataWithComponents weapon, string componentName, string componentCost, int cost_int, uint componentHash, uint weaponHash, int defaultClipSize, string ammoCost)
     {
+        uint player = (uint)Game.Player.Character.Model.Hash;
         NativeItem comp_m = new NativeItem(componentName, "", componentCost);
         comp_m.Activated += (sender, args) =>
         {
-            if (!purchased_components.ContainsKey(weaponHash))
+            if (!purchased_components[player].ContainsKey(weaponHash))
             {
-                purchased_components[weaponHash] = new List<uint> { };
+                purchased_components[player][weaponHash] = new List<uint> { };
             }
 
-            if (purchased_components[weaponHash].Contains(componentHash))
+            if (purchased_components[player][weaponHash].Contains(componentHash))
             {
                 if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, weaponHash, componentHash))
                 {
                     Function.Call(Hash.REMOVE_WEAPON_COMPONENT_FROM_PED, Game.Player.Character.Handle, weaponHash, componentHash);
-                    install_components[weaponHash].Remove(componentHash);
+                    install_components[player][weaponHash].Remove(componentHash);
                     SaveWeaponInInventory();
                 }
                 else
                 {
-                    if (!install_components[weaponHash].Contains(componentHash))
+                    if (!install_components[player][weaponHash].Contains(componentHash))
                     {
-                        install_components[weaponHash].Add(componentHash);
+                        install_components[player][weaponHash].Add(componentHash);
                     }
 
                     Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
@@ -944,7 +997,7 @@ public class AddonWeapons : Script
                 else
                 {
                     Game.Player.Money -= cost_int;
-                    purchased_components[weaponHash].Add(componentHash);
+                    purchased_components[player][weaponHash].Add(componentHash);
                 }
             }
             List<uint> components_hashes = GetComponentsList(weapon);
@@ -1032,33 +1085,24 @@ public class AddonWeapons : Script
 
     }
 
-    private static void SerializeDictionary<TKey, TValue>(Dictionary<TKey, List<TValue>> dictionary, string filePath)
+    private void SerializeDictionary<T1, T2, T3>(string filePath, Dictionary<T1, Dictionary<T2, List<T3>>> dictionary)
     {
-        using (FileStream stream = File.Create(filePath))
+        using (FileStream fs = new FileStream(filePath, FileMode.Create))
         {
             BinaryFormatter formatter = new BinaryFormatter();
-            formatter.Serialize(stream, dictionary);
+            formatter.Serialize(fs, dictionary);
         }
     }
 
-    private static Dictionary<TKey, List<TValue>> DeserializeDictionary<TKey, TValue>(string filePath)
+    private Dictionary<T1, Dictionary<T2, List<T3>>> DeserializeDictionary<T1, T2, T3>(string filePath)
     {
-        Dictionary<TKey, List<TValue>> deserializedDictionary = null;
-        try
+        using (FileStream fs = new FileStream(filePath, FileMode.Open))
         {
-            using (FileStream stream = File.OpenRead(filePath))
-            {
-                BinaryFormatter formatter = new BinaryFormatter();
-                deserializedDictionary = (Dictionary<TKey, List<TValue>>)formatter.Deserialize(stream);
-            }
+            BinaryFormatter formatter = new BinaryFormatter();
+            return (Dictionary<T1, Dictionary<T2, List<T3>>>)formatter.Deserialize(fs);
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error while deserializing dictionary: {ex.Message}");
-        }
-
-        return deserializedDictionary;
     }
+
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
     private struct DlcWeaponData
