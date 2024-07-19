@@ -137,6 +137,22 @@ public class AddonWeapons : Script
 
         foreach (var weaponHash in weaponsHashes)
         {
+            if (!purchased_components.ContainsKey(weaponHash))
+            {
+                purchased_components.Add(weaponHash, new List<uint> { });
+            }
+
+            if (!purchased_tints.ContainsKey(weaponHash))
+            {
+                purchased_tints.Add(weaponHash, new List<int> { });
+            }
+
+            if (!install_components.ContainsKey(weaponHash))
+            {
+                install_components.Add(weaponHash, new List<uint> { });
+            }
+
+
             if (!Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash))
             {
                 Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
@@ -144,7 +160,10 @@ public class AddonWeapons : Script
 
             foreach (var componentHash in purchased_components[weaponHash])
             {
-                Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
+                if (install_components[weaponHash].Contains(componentHash))
+                {
+                    Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
+                }
             }
         }
     }
@@ -464,11 +483,6 @@ public class AddonWeapons : Script
 
         foreach (var weaponHash in weaponsHashes)
         {
-            if (install_components.ContainsKey(weaponHash))
-            {
-                install_components[weaponHash].Clear();
-            }
-            
             if (purchased_components.ContainsKey(weaponHash))
             {
                 foreach (var componentHash in purchased_components[weaponHash])
@@ -711,17 +725,12 @@ public class AddonWeapons : Script
                 IsRounds = false;
                 continue;
             }
-
+            
             int max_index = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, current_weapon_hash);
             if (index < max_index)
             {
                 if (Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, current_weapon_hash) == index)
                 {
-                    if (!purchased_tints.ContainsKey(current_weapon_hash))
-                    {
-                        purchased_tints[current_weapon_hash] = new List<int> { };
-                    }
-
                     if (!purchased_tints[current_weapon_hash].Contains(index))
                     {
                         purchased_tints[current_weapon_hash].Add(index);
@@ -733,24 +742,17 @@ public class AddonWeapons : Script
                 }
                 else
                 {
-                    if (!purchased_tints.ContainsKey(current_weapon_hash))
+                    if (purchased_tints[current_weapon_hash].Contains(index))
                     {
-                        purchased_tints[current_weapon_hash] = new List<int> { };
+                        item.AltTitle = "";
+                        item.RightBadgeSet = shop_tick;
+                        index++;
                     }
                     else
                     {
-                        if (purchased_tints[current_weapon_hash].Contains(index))
-                        {
-                            item.AltTitle = "";
-                            item.RightBadgeSet = shop_tick;
-                            index++;
-                        }
-                        else
-                        {
-                            item.AltTitle = "$1000";
-                            item.RightBadgeSet = null;
-                            index++;
-                        }
+                        item.AltTitle = "$1000";
+                        item.RightBadgeSet = null;
+                        index++;
                     }
                 }
             }
@@ -758,11 +760,6 @@ public class AddonWeapons : Script
             {
                 if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, current_weapon_hash, components_hashes[index]))
                 {
-                    if (!purchased_components.ContainsKey(current_weapon_hash))
-                    {
-                        purchased_components[current_weapon_hash] = new List<uint> { };
-                    }
-
                     if (!purchased_components[current_weapon_hash].Contains(components_hashes[index]))
                     {
                         purchased_components[current_weapon_hash].Add(components_hashes[index]);
@@ -774,11 +771,6 @@ public class AddonWeapons : Script
                 }
                 else
                 {
-                    if (!purchased_components.ContainsKey(current_weapon_hash))
-                    {
-                        purchased_components[current_weapon_hash] = new List<uint> { };
-                    }
-
                     if (purchased_components[current_weapon_hash].Contains(components_hashes[index]))
                     {
                         item.AltTitle = "";
@@ -867,6 +859,21 @@ public class AddonWeapons : Script
                                 ComponentMenu.Add(comp_m);
                             }
 
+                            if (!purchased_components.ContainsKey(weaponHash))
+                            {
+                                purchased_components.Add(weaponHash, new List<uint> { });
+                            }
+
+                            if (!purchased_tints.ContainsKey(weaponHash))
+                            {
+                                purchased_tints.Add(weaponHash, new List<int> { });
+                            }
+
+                            if (!install_components.ContainsKey(weaponHash))
+                            {
+                                install_components.Add(weaponHash, new List<uint> { });
+                            }
+
                             List<uint> components_hashes = GetComponentsList(weapon);
                             List<int> components_cost = GetComponentsCost(weapon);
                             RefreshComponentMenu(ComponentMenu, components_hashes, components_cost);
@@ -915,9 +922,16 @@ public class AddonWeapons : Script
                 if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, weaponHash, componentHash))
                 {
                     Function.Call(Hash.REMOVE_WEAPON_COMPONENT_FROM_PED, Game.Player.Character.Handle, weaponHash, componentHash);
+                    install_components[weaponHash].Remove(componentHash);
+                    SaveWeaponInInventory();
                 }
                 else
                 {
+                    if (!install_components[weaponHash].Contains(componentHash))
+                    {
+                        install_components[weaponHash].Add(componentHash);
+                    }
+
                     Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
                 }
             }
