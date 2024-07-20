@@ -80,11 +80,8 @@ public class AddonWeapons : Script
     string _HELP_MESSAGE;
     string _NO_MONEY;
 
-    Hash WEAPON_BOX = Function.Call<Hash>(Hash.GET_HASH_KEY, "prop_box_ammo03a_set2");
-
     Model model_box = new Model(2107849419);
 
-    ScriptSettings config;
     ScriptSettings config_settings;
 
     bool SP0_loaded = false;
@@ -92,6 +89,7 @@ public class AddonWeapons : Script
     bool SP2_loaded = false;
     uint current_weapon_hash = 0;
 
+    int show_ammo_flag = 0;
 
     Keys menuOpenKey;
 
@@ -118,12 +116,30 @@ public class AddonWeapons : Script
     {
         new Vector3(19.04f, -1103.96f, 29.24f),
         new Vector3(814.0817f, -2159.347f, 29.04f),
+        new Vector3(1691.051f, 3756.589f, 34.14f),
+        new Vector3(253.34f, -45.93f, 69.27754f),
+        new Vector3(846.4512f, -1033.26f, 27.63f),
+        new Vector3(-333.0135f, 6080.67f, 30.89f),
+        new Vector3(-666.3039f, -935.6205f, 21.26f),
+        new Vector3(-1305.119f, -390.2967f, 36.12f),
+        new Vector3(-1120.622f, 2695.518f, 17.99f),
+        new Vector3(-3173.297f, 1083.793f, 20.28f),
+        new Vector3(2572.105f, 294.635f, 108.17f),
     };
 
     List<Vector3> box_rot = new List<Vector3>()
     {
         new Vector3(1.001787E-05f, 5.008956E-06f, -18.99999f),
-        new Vector3(0f, 0f, 0f)
+        new Vector3(0f, 0f, 0f),
+        new Vector3(0f, 0f, 46.9999f),
+        new Vector3(0f, 0f, 70.99976f),
+        new Vector3(0f, 0f, 0f),
+        new Vector3(0f, 0f, 44.99992f),
+        new Vector3(0f, 0f, 0f),
+        new Vector3(0f, 0f, 74.99975f),
+        new Vector3(0f, 0f, 40.99995f),
+        new Vector3(0f, 0f, 64.9998f),
+        new Vector3(0f, 0f, 0f),
     };
 
     List<Prop> box_prop = new List<Prop>() { };
@@ -382,6 +398,23 @@ public class AddonWeapons : Script
     {
         box_prop.Add(null);
         box_prop.Add(null);
+        box_prop.Add(null);
+        box_prop.Add(null);
+        box_prop.Add(null);
+        box_prop.Add(null);
+        box_prop.Add(null);
+        box_prop.Add(null);
+        box_prop.Add(null);
+        box_prop.Add(null);
+        box_prop.Add(null);
+    }
+
+    private void ShowAmmo()
+    {
+        if (show_ammo_flag == 1)
+        {
+            Function.Call(Hash.DISPLAY_AMMO_THIS_FRAME, true);
+        }
     }
 
     private void CreateAmmoBoxesThisFrame()
@@ -410,6 +443,7 @@ public class AddonWeapons : Script
                 {
                     if (!IsMenuOpen())
                     {
+                        show_ammo_flag = 0;
                         Function.Call(Hash.BEGIN_TEXT_COMMAND_DISPLAY_HELP, _HELP_MESSAGE);
                         Function.Call(Hash.ADD_TEXT_COMPONENT_SUBSTRING_KEYBOARD_DISPLAY, "~INPUT_CONTEXT~");
                         Function.Call(Hash.END_TEXT_COMMAND_DISPLAY_HELP, 0, 0, 1, -1);
@@ -579,6 +613,7 @@ public class AddonWeapons : Script
         pool.Process();
         CreateAmmoBoxesThisFrame();
         WaitLoadedInventory();
+        ShowAmmo();
     }
 
     private bool IsMenuOpen()
@@ -838,7 +873,6 @@ public class AddonWeapons : Script
                 {
                     Game.Player.Money -= cost;
                     Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, defaultClipSize);
-
                     uint player = (uint)Game.Player.Character.Model.Hash;
                     int current_ammo = Function.Call<int>(Hash.GET_AMMO_IN_PED_WEAPON, Game.Player.Character, weaponHash);
                     AddDictValue(AMMO_DICT, player, weaponHash, 0, current_ammo);
@@ -972,6 +1006,8 @@ public class AddonWeapons : Script
         BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
         uint player = (uint)Game.Player.Character.Model.Hash;
         NativeItem weap_m = new NativeItem(WeapName, WeapDesc, WeapCost);
+        Function.Call(Hash.SET_CURRENT_PED_WEAPON, Game.Player.Character, weaponHash, true);
+        show_ammo_flag = 1;
         weap_m.Activated += (sender, args) =>
         {
             if (Game.Player.Money < weapon.WeaponData.weaponCost)
