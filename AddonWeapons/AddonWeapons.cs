@@ -82,14 +82,6 @@ public class AddonWeapons : Script
 
     Hash WEAPON_BOX = Function.Call<Hash>(Hash.GET_HASH_KEY, "prop_box_ammo03a_set2");
 
-    Prop box1;
-    Prop box2;
-
-    Vector3 box_pos_1;
-    Vector3 box_pos_2;
-    Vector3 box_rot_1;
-    Vector3 box_rot_2;
-
     Model model_box = new Model(2107849419);
 
     ScriptSettings config;
@@ -121,6 +113,20 @@ public class AddonWeapons : Script
         "GS_BROWSE_W",
         "MPCT_SMON_04"
     };
+
+    List<Vector3> box_pos = new List<Vector3>()
+    {
+        new Vector3(19.04f, -1103.96f, 29.24f),
+        new Vector3(814.0817f, -2159.347f, 29.04f),
+    };
+
+    List<Vector3> box_rot = new List<Vector3>()
+    {
+        new Vector3(1.001787E-05f, 5.008956E-06f, -18.99999f),
+        new Vector3(0f, 0f, 0f)
+    };
+
+    List<Prop> box_prop = new List<Prop>() { };
 
     public AddonWeapons()
     {
@@ -374,39 +380,49 @@ public class AddonWeapons : Script
 
     private void LoadAmmoBoxes()
     {
-        box_pos_1 = new Vector3(19.04f, -1103.96f, 29.24f);
-        box_pos_2 = new Vector3(814.0817f, -2159.347f, 29.04f);
-        box_rot_1 = new Vector3(1.001787E-05f, 5.008956E-06f, -18.99999f);
-        box_rot_2 = new Vector3(0f, 0f, 0f);
+        box_prop.Add(null);
+        box_prop.Add(null);
     }
 
     private void CreateAmmoBoxesThisFrame()
     {
-        if (Game.Player.Character.Position.DistanceTo(box_pos_1) < 10f && box1 == null)
+        for (int i = 0; i < box_pos.Count; i++)
         {
-            box1 = World.CreateProp(model_box, box_pos_1, box_rot_1, false, false);
-            Function.Call(Hash.PLACE_OBJECT_ON_GROUND_PROPERLY, box1);
-            Function.Call(Hash.FREEZE_ENTITY_POSITION, box1, true);
-        }
+            if (Game.Player.Character.Position.DistanceTo(box_pos[i]) < 10f)
+            {
+                if (box_prop[i] == null)
+                {
+                    box_prop[i] = World.CreateProp(model_box, box_pos[i], box_rot[i], false, false);
+                    Function.Call(Hash.PLACE_OBJECT_ON_GROUND_PROPERLY, box_prop[i]);
+                    Function.Call(Hash.FREEZE_ENTITY_POSITION, box_prop[i], true);
+                }
+            }
 
-        if (Game.Player.Character.Position.DistanceTo(box_pos_1) > 15f && box1 != null && box1.Exists())
-        {
-            box1.Delete();
-            box1 = null;
-        }
+            if (Game.Player.Character.Position.DistanceTo(box_pos[i]) > 15f && box_prop[i] != null && box_prop[i].Exists())
+            {
+                box_prop[i].Delete();
+                box_prop[i] = null;
+            }
 
-        if (Game.Player.Character.Position.DistanceTo(box_pos_2) < 10f && box2 == null)
-        {
-            box2 = World.CreateProp(model_box, box_pos_2, box_rot_2, false, false);
-            Function.Call(Hash.PLACE_OBJECT_ON_GROUND_PROPERLY, box2);
-            Function.Call(Hash.FREEZE_ENTITY_POSITION, box2, true);
-        }
+            if (box_prop[i] != null && box_prop[i].Exists())
+            {
+                if (Game.Player.Character.Position.DistanceTo(box_prop[i].Position) < 1.5f)
+                {
+                    if (!IsMenuOpen())
+                    {
+                        Function.Call(Hash.BEGIN_TEXT_COMMAND_DISPLAY_HELP, _HELP_MESSAGE);
+                        Function.Call(Hash.ADD_TEXT_COMPONENT_SUBSTRING_KEYBOARD_DISPLAY, "~INPUT_CONTEXT~");
+                        Function.Call(Hash.END_TEXT_COMMAND_DISPLAY_HELP, 0, 0, 1, -1);
+                    }
 
-        if (Game.Player.Character.Position.DistanceTo(box_pos_2) > 15f && box2 != null && box2.Exists())
-        {
-            box2.Delete();
-            box2 = null;
-        }
+                    if (Function.Call<bool>(Hash.IS_CONTROL_JUST_PRESSED, 0, 51))
+                    {
+                        RefreshMenus();
+                        menu.Visible = true;
+                    }
+                }
+            }
+        }    
     }
 
     private void AddDictValue(int type_dict, uint player, uint weaponHash, uint componentHash, int tint)
@@ -535,10 +551,13 @@ public class AddonWeapons : Script
 
     private void DeleteAmmoBoxes()
     {
-        if (box1 != null && box1.Exists())
+        foreach (Prop box in box_prop)
         {
-            box1.Delete();
-        }
+            if (box != null && box.Exists())
+            {
+                box.Delete();
+            }
+        }    
     }
 
     private void OnAborted(object sender, EventArgs e)
@@ -560,27 +579,6 @@ public class AddonWeapons : Script
         pool.Process();
         CreateAmmoBoxesThisFrame();
         WaitLoadedInventory();
-
-        if (Game.Player.Character.Position.DistanceTo(box_pos_1) < 1.5f || Game.Player.Character.Position.DistanceTo(box_pos_2) < 1.5f)
-        {
-            if (!IsMenuOpen())
-            {
-                Function.Call(Hash.BEGIN_TEXT_COMMAND_DISPLAY_HELP, _HELP_MESSAGE);
-                Function.Call(Hash.ADD_TEXT_COMPONENT_SUBSTRING_KEYBOARD_DISPLAY, "~INPUT_CONTEXT~");
-                Function.Call(Hash.END_TEXT_COMMAND_DISPLAY_HELP, 0, 0, 1, -1);
-            }
-
-            if (Function.Call<bool>(Hash.IS_CONTROL_JUST_PRESSED, 0, 51))
-            {
-                RefreshMenus();
-                menu.Visible = true;
-            }
-        }
-
-        if (Game.Player.Character.Position.DistanceTo(box_pos_1) > 1.5f && Game.Player.Character.Position.DistanceTo(box_pos_2) > 1.5f && IsMenuOpen())
-        {
-            CloseAllMenus();
-        }
     }
 
     private bool IsMenuOpen()
