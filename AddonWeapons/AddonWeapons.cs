@@ -23,6 +23,7 @@ public class AddonWeapons : Script
     private Dictionary<uint, Dictionary<uint, List<int>>> purchased_tints = new Dictionary<uint, Dictionary<uint, List<int>>>();
     private Dictionary<uint, Dictionary<uint, List<uint>>> install_components = new Dictionary<uint, Dictionary<uint, List<uint>>>();
     private Dictionary<uint, Dictionary<uint, List<int>>> install_ammo = new Dictionary<uint, Dictionary<uint, List<int>>>();
+    private Dictionary<uint, Dictionary<uint, List<int>>> install_tints = new Dictionary<uint, Dictionary<uint, List<int>>>();
 
     ObjectPool pool;
     NativeMenu menu;
@@ -42,6 +43,7 @@ public class AddonWeapons : Script
     const int INSTALLCOMP_DICT = 1;
     const int TINTS_DICT = 2;
     const int AMMO_DICT = 3;
+    const int INSTALLTINT_DICT = 4;
 
     const uint GROUP_DIGISCANNER = 3539449195u;
     const uint GROUP_FIREEXTINGUISHER = 4257178988u;
@@ -161,21 +163,30 @@ public class AddonWeapons : Script
     {
         uint player = (uint)Game.Player.Character.Model.Hash;
 
-        if (File.Exists($"Scripts\\AddonWeapons\\components.bin"))
+        if (!Directory.Exists($"Scripts\\AddonWeapons\\bin"))
         {
-            purchased_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\components.bin");
+            Directory.CreateDirectory($"Scripts\\AddonWeapons\\bin");
+        }    
+
+        if (File.Exists($"Scripts\\AddonWeapons\\bin\\components.bin"))
+        {
+            purchased_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\bin\\components.bin");
         }
-        if (File.Exists($"Scripts\\AddonWeapons\\tints.bin"))
+        if (File.Exists($"Scripts\\AddonWeapons\\bin\\tints.bin"))
         {
-            purchased_tints = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\tints.bin");
+            purchased_tints = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\tints.bin");
         }
-        if (File.Exists($"Scripts\\AddonWeapons\\install_components.bin"))
+        if (File.Exists($"Scripts\\AddonWeapons\\bin\\install_components.bin"))
         {
-            install_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\install_components.bin");
+            install_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\bin\\install_components.bin");
         }
-        if (File.Exists($"Scripts\\AddonWeapons\\install_ammo.bin"))
+        if (File.Exists($"Scripts\\AddonWeapons\\bin\\install_ammo.bin"))
         {
-            install_ammo = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\install_ammo.bin");
+            install_ammo = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\install_ammo.bin");
+        }
+        if (File.Exists($"Scripts\\AddonWeapons\\bin\\install_tints.bin"))
+        {
+            install_tints = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\install_tints.bin");
         }
 
         if (!purchased_components.ContainsKey(player))
@@ -193,6 +204,10 @@ public class AddonWeapons : Script
         if (!install_ammo.ContainsKey(player))
         {
             install_ammo[player] = new Dictionary<uint, List<int>>();
+        }
+        if (!install_tints.ContainsKey(player))
+        {
+            install_tints[player] = new Dictionary<uint, List<int>>();
         }
 
         List<uint> weaponsHashes = new List<uint>(purchased_components[player].Keys);
@@ -216,6 +231,10 @@ public class AddonWeapons : Script
             {
                 install_ammo[player][weaponHash] = new List<int> { };
             }
+            if (!install_tints[player].ContainsKey(weaponHash))
+            {
+                install_tints[player][weaponHash] = new List<int> { };
+            }
 
             if (!Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash))
             {
@@ -227,6 +246,13 @@ public class AddonWeapons : Script
                 if (install_components[player][weaponHash].Contains(componentHash))
                 {
                     Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
+                }
+            }
+            foreach (var tint in purchased_tints[player][weaponHash])
+            {
+                if (ValueContains(INSTALLTINT_DICT, player, weaponHash, 0, tint))
+                {
+                    Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint);
                 }
             }
         }
@@ -502,6 +528,21 @@ public class AddonWeapons : Script
                     install_ammo[player][weaponHash][0] = tint;
                 }
                 break;
+            case INSTALLTINT_DICT:
+                if (!install_tints[player].ContainsKey(weaponHash))
+                {
+                    install_tints[player].Add(weaponHash, new List<int> { });
+                }
+
+                if (install_tints[player][weaponHash].Count == 0)
+                {
+                    install_tints[player][weaponHash].Add(tint);
+                }
+                else
+                {
+                    install_tints[player][weaponHash][0] = tint;
+                }
+                break;
         }
     }
 
@@ -539,6 +580,14 @@ public class AddonWeapons : Script
                     install_ammo[player].Add(weaponHash, new List<int> { });
                 }
                 install_ammo[player][weaponHash].Remove(tint);
+                break;
+
+            case INSTALLTINT_DICT:
+                if (!install_tints[player].ContainsKey(weaponHash))
+                {
+                    install_tints[player].Add(weaponHash, new List<int> { });
+                }
+                install_tints[player][weaponHash].Remove(tint);
                 break;
         }
     }
@@ -578,6 +627,14 @@ public class AddonWeapons : Script
                     install_ammo[player].Add(weaponHash, new List<int> { });
                 }
                 if (install_ammo[player][weaponHash].Contains(tint)) result = true;
+                break;
+
+            case INSTALLTINT_DICT:
+                if (!install_tints[player].ContainsKey(weaponHash))
+                {
+                    install_tints[player].Add(weaponHash, new List<int> { });
+                }
+                if (install_tints[player][weaponHash].Contains(tint)) result = true;
                 break;
         }
         return result;
@@ -723,10 +780,11 @@ public class AddonWeapons : Script
             }
         }
 
-        SerializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\components.bin", purchased_components);
-        SerializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\tints.bin", purchased_tints);
-        SerializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\install_components.bin", install_components);
-        SerializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\install_ammo.bin", install_ammo);
+        SerializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\bin\\components.bin", purchased_components);
+        SerializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\tints.bin", purchased_tints);
+        SerializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\bin\\install_components.bin", install_components);
+        SerializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\install_ammo.bin", install_ammo);
+        SerializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\install_tints.bin", install_tints);
     }
 
     NativeItem ActivateLivery(DlcWeaponDataWithComponents weapon, NativeItem item, int livery_id, uint weaponHash, BadgeSet badge)
@@ -743,6 +801,7 @@ public class AddonWeapons : Script
                 if (ValueContains(TINTS_DICT, player, weaponHash, 0, livery_id))
                 {
                     Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, livery_id);
+                    AddDictValue(INSTALLTINT_DICT, player, weaponHash, 0, livery_id);
                 }
                 else
                 {
