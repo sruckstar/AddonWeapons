@@ -1021,7 +1021,10 @@ public class AddonWeapons : Script
     {
         List<uint> components_hashes = new List<uint>();
 
-        for (int i = 0; i < Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weapon.WeaponData.weaponHash); i++)
+        int max_tint = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weapon.WeaponData.weaponHash);
+        if (max_tint == 33) max_tint--;
+
+        for (int i = 0; i < max_tint; i++)
         {
             components_hashes.Add(0);
         }
@@ -1037,6 +1040,9 @@ public class AddonWeapons : Script
     private List<int> GetComponentsCost(DlcWeaponDataWithComponents weapon)
     {
         List<int> components_cost = new List<int>();
+
+        int max_tint = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weapon.WeaponData.weaponHash);
+        if (max_tint == 33) max_tint--;
 
         for (int i = 0; i < Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weapon.WeaponData.weaponHash); i++)
         {
@@ -1069,6 +1075,8 @@ public class AddonWeapons : Script
             }
 
             int max_index = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, current_weapon_hash);
+            if (max_index == 33) max_index--;
+
             if (index < max_index)
             {
                 if (Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, current_weapon_hash) == index)
@@ -1079,7 +1087,6 @@ public class AddonWeapons : Script
                     }
                     item.AltTitle = "";
                     item.RightBadgeSet = shop_gun;
-                    index++;
                 }
                 else
                 {
@@ -1087,13 +1094,11 @@ public class AddonWeapons : Script
                     {
                         item.AltTitle = "";
                         item.RightBadgeSet = shop_tick;
-                        index++;
                     }
                     else
                     {
                         item.AltTitle = "$1000";
                         item.RightBadgeSet = null;
-                        index++;
                     }
                 }
             }
@@ -1108,7 +1113,6 @@ public class AddonWeapons : Script
 
                     item.AltTitle = "";
                     item.RightBadgeSet = shop_gun;
-                    index++;
                 }
                 else
                 {
@@ -1116,19 +1120,30 @@ public class AddonWeapons : Script
                     {
                         item.AltTitle = "";
                         item.RightBadgeSet = shop_tick;
-                        index++;
                     }
                     else
                     {
                         item.AltTitle = $"${components_cost[index]}";
                         item.RightBadgeSet = null;
-                        index++;
                     }
                 }
             }
+            index++;
         }
 
         SaveWeaponInInventory();
+    }
+
+    bool HashComponentsAvailable(uint weaponHash)
+    {
+        bool result = false;
+
+        if ((WeaponHash)weaponHash == WeaponHash.Bat || (WeaponHash)weaponHash == WeaponHash.Knife || Function.Call<uint>(Hash.GET_WEAPONTYPE_GROUP, weaponHash) != GROUP_MELEE)
+        {
+            result = true;
+        }
+
+        return result;
     }
 
     private NativeItem CreateWeaponItem(DlcWeaponDataWithComponents weapon, string WeapName, string WeapDesc, string WeapCost, uint weaponHash)
@@ -1148,7 +1163,7 @@ public class AddonWeapons : Script
             {
                 if (Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash))
                 {
-                    if (Function.Call<uint>(Hash.GET_WEAPONTYPE_GROUP, weaponHash) != GROUP_MELEE)
+                    if (HashComponentsAvailable(weaponHash))
                     {
                         current_weapon_hash = weaponHash;
                         CloseAllMenus();
@@ -1167,9 +1182,162 @@ public class AddonWeapons : Script
                             {
                                 string CompName = Game.GetLocalizedString("WCT_STNGN_BAIL");
                                 uint componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_STUNGUN_VARMOD_BAIL");
-                                string componentCost = $"${weapon.WeaponData.ammoCost}";
+                                string componentCost = "$1000";
                                 int componentCost_int = 1000;
                                 NativeItem comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+                            }
+
+                            else if((WeaponHash)weaponHash == WeaponHash.Bat)
+                            {
+                                string CompName = Game.GetLocalizedString("WCT_BAT_XM3");
+                                uint componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_BAT_VARMOD_XM3");
+                                string componentCost = "$1000";
+                                int componentCost_int = 1000;
+                                NativeItem comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_BAT_XM301");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_BAT_VARMOD_XM3_01");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_BAT_XM302");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_BAT_VARMOD_XM3_02");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_BAT_XM303");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_BAT_VARMOD_XM3_03");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_BAT_XM304");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_BAT_VARMOD_XM3_04");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_BAT_XM305");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_BAT_VARMOD_XM3_05");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_BAT_XM306");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_BAT_VARMOD_XM3_06");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_BAT_XM307");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_BAT_VARMOD_XM3_07");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_BAT_XM308");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_BAT_VARMOD_XM3_08");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_BAT_XM309");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_BAT_VARMOD_XM3_09");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_BAT_XM309");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_BAT_VARMOD_XM3_09");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+                            }
+
+                            else if ((WeaponHash)weaponHash == WeaponHash.Knife)
+                            {
+                                string CompName = Game.GetLocalizedString("WCT_KNIFE_XM3");
+                                uint componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_KNIFE_VARMOD_XM3");
+                                string componentCost = "$1000";
+                                int componentCost_int = 1000;
+                                NativeItem comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_KNIFE_XM301");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_KNIFE_VARMOD_XM3_01");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_KNIFE_XM302");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_KNIFE_VARMOD_XM3_02");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_KNIFE_XM303");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_KNIFE_VARMOD_XM3_03");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_KNIFE_XM304");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_KNIFE_VARMOD_XM3_04");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_KNIFE_XM305");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_KNIFE_VARMOD_XM3_05");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_KNIFE_XM306");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_KNIFE_VARMOD_XM3_06");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_KNIFE_XM307");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_KNIFE_VARMOD_XM3_07");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_KNIFE_XM308");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_KNIFE_VARMOD_XM3_08");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
+                                ComponentMenu.Add(comp_m);
+
+                                CompName = Game.GetLocalizedString("WCT_KNIFE_XM309");
+                                componentHash = Function.Call<uint>(Hash.GET_HASH_KEY, "COMPONENT_KNIFE_VARMOD_XM3_09");
+                                componentCost = "$1000";
+                                componentCost_int = 1000;
+                                comp_m = CreateComponentItem(weapon, CompName, componentCost, componentCost_int, componentHash, weaponHash, defaultClipSize, ammoCost);
                                 ComponentMenu.Add(comp_m);
                             }
                         }
@@ -1286,10 +1454,23 @@ public class AddonWeapons : Script
 
     private void SetMenuItems()
     {
+        NativeItem weap_bat = null;
+        NativeItem weap_knife = null;
+
         foreach (var category in weaponCategories)
         {
             foreach (var weapon in category.Value)
             {
+                if (weap_bat == null && weap_knife == null)
+                {
+                    string name_bat = Game.GetLocalizedString("WT_BAT");
+                    string name_knife = Game.GetLocalizedString("WT_KNIFE");
+                    weap_bat = CreateWeaponItem(weapon, name_bat, "", "1000", (uint)WeaponHash.Bat);
+                    weap_knife = CreateWeaponItem(weapon, name_knife, "", "1000", (uint)WeaponHash.Knife);
+                    MeleeMenu.Add(weap_bat);
+                    MeleeMenu.Add(weap_knife);
+                }
+
                 if ((WeaponHash)weapon.WeaponData.weaponHash == WeaponHash.Railgun)
                 {
                     continue;
