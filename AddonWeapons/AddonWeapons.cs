@@ -92,6 +92,7 @@ public class AddonWeapons : Script
     uint current_weapon_hash = 0;
 
     int show_ammo_flag = 0;
+    int save_in_progress = 0;
 
     Keys menuOpenKey;
 
@@ -260,21 +261,40 @@ public class AddonWeapons : Script
 
     private void WaitLoadedInventory()
     {
+        if (Function.Call<bool>(Hash.IS_PLAYER_SWITCH_IN_PROGRESS))
+        {
+            if (save_in_progress == 0)
+            {
+                SaveWeaponInInventory();
+                save_in_progress = 1;
+            }
+        }
+        else
+        {
+            if (save_in_progress == 1) save_in_progress = 0;
+        }
+
         if (!SP0_loaded && Game.Player.Character.Model.Hash == new Model("player_zero").Hash)
         {
             LoadInventory();
             SP0_loaded = true;
+            SP1_loaded = false;
+            SP2_loaded = false;
         }
 
         if (!SP1_loaded && Game.Player.Character.Model.Hash == new Model("player_one").Hash)
         {
             LoadInventory();
+            SP0_loaded = false;
             SP1_loaded = true;
+            SP2_loaded = false;
         }
 
         if (!SP2_loaded && Game.Player.Character.Model.Hash == new Model("player_two").Hash)
         {
             LoadInventory();
+            SP0_loaded = false;
+            SP1_loaded = false;
             SP2_loaded = true;
         }
     }
