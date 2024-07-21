@@ -115,6 +115,54 @@ public class AddonWeapons : Script
         "MPCT_SMON_04"
     };
 
+    List<int> price_standard = new List<int>()
+    {
+        0,
+        100,
+        200,
+        400,
+        600,
+        800,
+        1000,
+        1500,
+    };
+
+    List<int> price_mk2 = new List<int>()
+    {
+        20000,
+        20000,
+        30000,
+        30000,
+        30000,
+        30000,
+        30000,
+        35000,
+        35000,
+        40000,
+        40000,
+        40000,
+        40000,
+        75000,
+        60000,
+        60000,
+        60000,
+        50000,
+        50000,
+        50000,
+        50000,
+        45000,
+        45000,
+        100000,
+        100000,
+        80000,
+        80000,
+        75000,
+        75000,
+        75000,
+        90000,
+        90000
+    };
+
     List<Vector3> box_pos = new List<Vector3>()
     {
         new Vector3(19.04f, -1103.96f, 29.24f),
@@ -878,15 +926,18 @@ public class AddonWeapons : Script
             if (tint_count == 8)
             {
                 tint_name = "WM_TINT";
+                List<int> price_temp = price_standard;
             }
             else
             {
                 tint_name = "WCT_TINT_";
+                List<int> price_temp = price_mk2;
             }
 
             for (int i = 0; i < tint_count; i++)
             {
                 string LiveryName = Game.GetLocalizedString($"{tint_name}{i}");
+                if (LiveryName.Length < 2) continue; 
                 NativeItem tint_m = new NativeItem(LiveryName, "", "$1000");
                 tint_m = ActivateLivery(weapon, tint_m, i, weaponHash, shop_gun);
 
