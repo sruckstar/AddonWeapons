@@ -304,8 +304,6 @@ public class AddonWeapons : Script
                     Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint);
                 }
             }
-
-            GTA.UI.Screen.ShowSubtitle($"Ammo count {install_ammo[player][weaponHash][0]}");
             Function.Call(Hash.ADD_PED_AMMO_BY_TYPE, Game.Player.Character, Function.Call<Hash>(Hash.GET_PED_AMMO_TYPE_FROM_WEAPON, Game.Player.Character, weaponHash), install_ammo[player][weaponHash][0]);
         }
     }
@@ -1009,7 +1007,6 @@ public class AddonWeapons : Script
                     uint player = (uint)Game.Player.Character.Model.Hash;
                     int current_ammo = Function.Call<int>(Hash.GET_AMMO_IN_PED_WEAPON, Game.Player.Character, weaponHash);
                     AddDictValue(AMMO_DICT, player, weaponHash, 0, current_ammo);
-                    GTA.UI.Screen.ShowSubtitle($"Saved {current_ammo} ammo");
                     SaveWeaponInInventory();
 
                     if (IsmaxAmmo(weaponHash))
@@ -1295,13 +1292,7 @@ public class AddonWeapons : Script
                         Function.Call(Hash.ADD_PED_AMMO_BY_TYPE, Game.Player.Character, Function.Call<Hash>(Hash.GET_PED_AMMO_TYPE_FROM_WEAPON, Game.Player.Character, weaponHash), 200);
                         AddDictValue(AMMO_DICT, player, weaponHash, 0, 200);
                         SaveWeaponInInventory();
-                        GTA.UI.Screen.ShowSubtitle("Added 200 ammo for new component and saved inv");
                     }
-                    else
-                    {
-                        GTA.UI.Screen.ShowSubtitle($"Current ammo after install comp: {current_ammo}");
-                    }
-                    
                 }
             }
             else
