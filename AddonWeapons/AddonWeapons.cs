@@ -287,7 +287,7 @@ public class AddonWeapons : Script
 
             if (!Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash))
             {
-                Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, install_ammo[player][weaponHash][0], true, true);
+                Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 0, true, true);
             }
 
             foreach (var componentHash in purchased_components[player][weaponHash])
@@ -304,6 +304,9 @@ public class AddonWeapons : Script
                     Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint);
                 }
             }
+
+            GTA.UI.Screen.ShowSubtitle($"Ammo count {install_ammo[player][weaponHash][0]}");
+            Function.Call(Hash.ADD_PED_AMMO_BY_TYPE, Game.Player.Character, Function.Call<Hash>(Hash.GET_PED_AMMO_TYPE_FROM_WEAPON, Game.Player.Character, weaponHash), install_ammo[player][weaponHash][0]);
         }
     }
 
@@ -1002,10 +1005,12 @@ public class AddonWeapons : Script
                 if (!IsmaxAmmo(weaponHash))
                 {
                     Game.Player.Money -= cost;
-                    Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, defaultClipSize);
+                    Function.Call(Hash.ADD_PED_AMMO_BY_TYPE, Game.Player.Character, Function.Call<Hash>(Hash.GET_PED_AMMO_TYPE_FROM_WEAPON, Game.Player.Character, weaponHash), defaultClipSize);
                     uint player = (uint)Game.Player.Character.Model.Hash;
                     int current_ammo = Function.Call<int>(Hash.GET_AMMO_IN_PED_WEAPON, Game.Player.Character, weaponHash);
                     AddDictValue(AMMO_DICT, player, weaponHash, 0, current_ammo);
+                    GTA.UI.Screen.ShowSubtitle($"Saved {current_ammo} ammo");
+                    SaveWeaponInInventory();
 
                     if (IsmaxAmmo(weaponHash))
                     {
@@ -1284,6 +1289,19 @@ public class AddonWeapons : Script
                 else
                 {
                     Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
+                    int current_ammo = Function.Call<int>(Hash.GET_AMMO_IN_PED_WEAPON, Game.Player.Character, weaponHash);
+                    if (current_ammo == 0)
+                    {
+                        Function.Call(Hash.ADD_PED_AMMO_BY_TYPE, Game.Player.Character, Function.Call<Hash>(Hash.GET_PED_AMMO_TYPE_FROM_WEAPON, Game.Player.Character, weaponHash), 200);
+                        AddDictValue(AMMO_DICT, player, weaponHash, 0, 200);
+                        SaveWeaponInInventory();
+                        GTA.UI.Screen.ShowSubtitle("Added 200 ammo for new component and saved inv");
+                    }
+                    else
+                    {
+                        GTA.UI.Screen.ShowSubtitle($"Current ammo after install comp: {current_ammo}");
+                    }
+                    
                 }
             }
             else
