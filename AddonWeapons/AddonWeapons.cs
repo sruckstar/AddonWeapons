@@ -25,6 +25,9 @@ public class AddonWeapons : Script
     private Dictionary<uint, Dictionary<uint, List<int>>> install_ammo = new Dictionary<uint, Dictionary<uint, List<int>>>();
     private Dictionary<uint, Dictionary<uint, List<int>>> install_tints = new Dictionary<uint, Dictionary<uint, List<int>>>();
 
+    //local dict
+    private Dictionary<uint, uint> current_weapon = new Dictionary<uint, uint>();
+
     ObjectPool pool;
     NativeMenu menu;
     NativeMenu HeavyMenu;
@@ -39,6 +42,7 @@ public class AddonWeapons : Script
     NativeMenu ThrownMenu;
     NativeMenu ComponentMenu;
 
+    const int EMPTY_DICT = -1;
     const int COMPONENTS_DICT = 0;
     const int INSTALLCOMP_DICT = 1;
     const int TINTS_DICT = 2;
@@ -91,7 +95,6 @@ public class AddonWeapons : Script
     bool SP2_loaded = false;
     uint current_weapon_hash = 0;
 
-    int show_ammo_flag = 0;
     int save_in_progress = 0;
 
     Keys menuOpenKey;
@@ -195,6 +198,13 @@ public class AddonWeapons : Script
 
     List<Prop> box_prop = new List<Prop>() { };
 
+    private readonly Model[] mainCharacterModels = new Model[]
+    {
+        new Model(PedHash.Michael),
+        new Model(PedHash.Franklin),
+        new Model(PedHash.Trevor)
+    };
+
     public AddonWeapons()
     {
         SetLanguage();
@@ -206,6 +216,17 @@ public class AddonWeapons : Script
         Tick += OnTick;
         KeyUp += onkeyup;
         Aborted += OnAborted;
+    }
+
+    private void RefreshPedInventory()
+    {
+        foreach (var Ped in World.GetNearbyPeds(Game.Player.Character.Position, 50f, mainCharacterModels))
+        {
+            if (Ped != null && Ped != Game.Player.Character)
+            {
+                LoadInventoryForPed(Ped);
+            }
+        }
     }
 
     private void LoadInventory()
@@ -264,6 +285,7 @@ public class AddonWeapons : Script
 
         foreach (var weaponHash in weaponsHashes)
         {
+
             if (!purchased_components[player].ContainsKey(weaponHash))
             {
                 purchased_components[player][weaponHash] = new List<uint> { };
@@ -304,7 +326,60 @@ public class AddonWeapons : Script
                     Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint);
                 }
             }
-            Function.Call(Hash.ADD_PED_AMMO_BY_TYPE, Game.Player.Character, Function.Call<Hash>(Hash.GET_PED_AMMO_TYPE_FROM_WEAPON, Game.Player.Character, weaponHash), install_ammo[player][weaponHash][0]);
+            Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, install_ammo[player][weaponHash][0]);
+
+            if (current_weapon.ContainsKey(player))
+            {
+                while (Function.Call<int>(Hash.GET_PLAYER_SWITCH_STATE) < 10) Script.Wait(0);
+
+                Function.Call(Hash.SET_CURRENT_PED_WEAPON, Game.Player.Character, current_weapon[player], false);
+            }
+
+            foreach (var Ped in World.GetAllPeds())
+            {
+                if (Ped.Model.Hash == new Model("player_zero").Hash || Ped.Model.Hash == new Model("player_one").Hash || Ped.Model.Hash == new Model("player_two").Hash)
+                {
+                    if (Ped != Game.Player.Character)
+                    {
+                        LoadInventoryForPed(Ped);
+                    }
+                }
+            }
+        }
+    }
+
+    private void LoadInventoryForPed(Ped npc)
+    {
+        uint player = (uint)npc.Model.Hash;
+
+        List<uint> weaponsHashes = new List<uint>(purchased_components[player].Keys);
+        if (weaponsHashes.Count == 0) return;
+
+        foreach (var weaponHash in weaponsHashes)
+        {
+            if (!npc.Weapons.HasWeapon((WeaponHash)weaponHash))
+            {
+                npc.Weapons.Give((WeaponHash)weaponHash, 0, true, true);
+            }
+
+            foreach (var componentHash in purchased_components[player][weaponHash])
+            {
+                if (install_components[player][weaponHash].Contains(componentHash))
+                {
+                    if (!Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, npc, weaponHash, componentHash))
+                    {
+                        Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, npc.Handle, weaponHash, componentHash);
+                    }
+                }
+            }
+            foreach (var tint in purchased_tints[player][weaponHash])
+            {
+                if (ValueContains(INSTALLTINT_DICT, player, weaponHash, 0, tint))
+                {
+                    Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, npc, weaponHash, tint);
+                }
+            }
+            Function.Call(Hash.ADD_AMMO_TO_PED, npc, weaponHash, install_ammo[player][weaponHash][0]);
         }
     }
 
@@ -346,6 +421,18 @@ public class AddonWeapons : Script
             SP1_loaded = false;
             SP2_loaded = true;
         }
+    }
+
+    private void  SetCurrentWeapon()
+    {
+        uint player = (uint)Game.Player.Character.Model.Hash;
+
+        uint weaponHash = 0;
+        unsafe
+        {
+            Function.Call<bool>(Hash.GET_CURRENT_PED_WEAPON, Game.Player.Character, &weaponHash, true);
+        }
+        current_weapon[player] = weaponHash;
     }
 
     private void SetLanguage()
@@ -504,14 +591,6 @@ public class AddonWeapons : Script
         box_prop.Add(null);
     }
 
-    private void ShowAmmo()
-    {
-        if (show_ammo_flag == 1)
-        {
-            Function.Call(Hash.DISPLAY_AMMO_THIS_FRAME, true);
-        }
-    }
-
     private void CreateAmmoBoxesThisFrame()
     {
         for (int i = 0; i < box_pos.Count; i++)
@@ -538,7 +617,6 @@ public class AddonWeapons : Script
                 {
                     if (!IsMenuOpen())
                     {
-                        show_ammo_flag = 0;
                         Function.Call(Hash.BEGIN_TEXT_COMMAND_DISPLAY_HELP, _HELP_MESSAGE);
                         Function.Call(Hash.ADD_TEXT_COMPONENT_SUBSTRING_KEYBOARD_DISPLAY, "~INPUT_CONTEXT~");
                         Function.Call(Hash.END_TEXT_COMMAND_DISPLAY_HELP, 0, 0, 1, -1);
@@ -558,6 +636,13 @@ public class AddonWeapons : Script
     {
         switch (type_dict)
         {
+            case EMPTY_DICT:
+                if (!purchased_components[player].ContainsKey(weaponHash))
+                {
+                    purchased_components[player].Add(weaponHash, new List<uint> { });
+                }
+                break;
+
             case COMPONENTS_DICT:
                 if (!purchased_components[player].ContainsKey(weaponHash))
                 {
@@ -739,7 +824,8 @@ public class AddonWeapons : Script
         pool.Process();
         CreateAmmoBoxesThisFrame();
         WaitLoadedInventory();
-        ShowAmmo();
+        SetCurrentWeapon();
+        RefreshPedInventory();
     }
 
     private bool IsMenuOpen()
@@ -1183,7 +1269,6 @@ public class AddonWeapons : Script
         uint player = (uint)Game.Player.Character.Model.Hash;
         NativeItem weap_m = new NativeItem(WeapName, WeapDesc, WeapCost);
         Function.Call(Hash.SET_CURRENT_PED_WEAPON, Game.Player.Character, weaponHash, true);
-        show_ammo_flag = 1;
         weap_m.Activated += (sender, args) =>
         {
             if (Game.Player.Money < weapon.WeaponData.weaponCost)
@@ -1260,6 +1345,7 @@ public class AddonWeapons : Script
                 {
                     Game.Player.Money -= weapon.WeaponData.weaponCost;
                     Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
+                    AddDictValue(EMPTY_DICT, player, weaponHash, 0, 0);
                     SaveWeaponInInventory();
                 }
 
