@@ -364,7 +364,7 @@ public class AddonWeapons : Script
 
             foreach (var componentHash in purchased_components[player][weaponHash])
             {
-                if (install_components[player][weaponHash].Contains(componentHash))
+                if (ValueContains(INSTALLCOMP_DICT, player, weaponHash, componentHash, 0))
                 {
                     if (!Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, npc, weaponHash, componentHash))
                     {
@@ -1503,10 +1503,6 @@ public class AddonWeapons : Script
 
             }
         }
-
-        //Unregistered weapons in weapon_shop.meta must be manually added here
-
-
     }
 
     private void SerializeDictionary<T1, T2, T3>(string filePath, Dictionary<T1, Dictionary<T2, List<T3>>> dictionary)
