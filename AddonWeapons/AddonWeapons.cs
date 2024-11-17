@@ -93,7 +93,10 @@ public class AddonWeapons : Script
     bool SP0_loaded = false;
     bool SP1_loaded = false;
     bool SP2_loaded = false;
+    bool MP0_loaded = false;
+    bool MP1_loaded = false;
     uint current_weapon_hash = 0;
+    uint last_player = 0;
 
     int save_in_progress = 0;
 
@@ -202,7 +205,9 @@ public class AddonWeapons : Script
     {
         new Model(PedHash.Michael),
         new Model(PedHash.Franklin),
-        new Model(PedHash.Trevor)
+        new Model(PedHash.Trevor),
+        new Model(PedHash.FreemodeMale01),
+        new Model(PedHash.FreemodeFemale01)
     };
 
     public AddonWeapons()
@@ -229,55 +234,43 @@ public class AddonWeapons : Script
         }
     }
 
-    private void LoadInventory()
+    private void LoadInventory(uint player)
     {
-        uint player = (uint)Game.Player.Character.Model.Hash;
+        if (Game.Player.Character.Model.Hash == new Model("mp_m_freemode_01").Hash || Game.Player.Character.Model.Hash == new Model("mp_f_freemode_01").Hash)
+        {
+            foreach (WeaponHash weapon in Game.Player.Character.Weapons.GetAllWeaponHashes())
+            {
+                if (Game.Player.Character.Weapons.HasWeapon(weapon) && weapon != WeaponHash.Unarmed)
+                {
+                    Game.Player.Character.Weapons.Remove(weapon);
 
-        if (!Directory.Exists($"Scripts\\AddonWeapons\\bin"))
-        {
-            Directory.CreateDirectory($"Scripts\\AddonWeapons\\bin");
-        }    
-
-        if (File.Exists($"Scripts\\AddonWeapons\\bin\\components.bin"))
-        {
-            purchased_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\bin\\components.bin");
-        }
-        if (File.Exists($"Scripts\\AddonWeapons\\bin\\tints.bin"))
-        {
-            purchased_tints = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\tints.bin");
-        }
-        if (File.Exists($"Scripts\\AddonWeapons\\bin\\install_components.bin"))
-        {
-            install_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\bin\\install_components.bin");
-        }
-        if (File.Exists($"Scripts\\AddonWeapons\\bin\\install_ammo.bin"))
-        {
-            install_ammo = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\install_ammo.bin");
-        }
-        if (File.Exists($"Scripts\\AddonWeapons\\bin\\install_tints.bin"))
-        {
-            install_tints = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\install_tints.bin");
+                }
+            }
         }
 
-        if (!purchased_components.ContainsKey(player))
+        if (!Directory.Exists($"Scripts\\AddonWeapons\\bin")) Directory.CreateDirectory($"Scripts\\AddonWeapons\\bin");
+        if (File.Exists($"Scripts\\AddonWeapons\\bin\\components.bin"))  purchased_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\bin\\components.bin");
+        if (File.Exists($"Scripts\\AddonWeapons\\bin\\tints.bin")) purchased_tints = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\tints.bin");
+        if (File.Exists($"Scripts\\AddonWeapons\\bin\\install_components.bin")) install_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\bin\\install_components.bin");
+        if (File.Exists($"Scripts\\AddonWeapons\\bin\\install_ammo.bin")) install_ammo = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\install_ammo.bin");
+        if (File.Exists($"Scripts\\AddonWeapons\\bin\\install_tints.bin")) install_tints = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\install_tints.bin");
+
+        List<uint> players = new List<uint>()
+    {
+        (uint)Game.GenerateHash("player_zero"),
+        (uint)Game.GenerateHash("player_one"),
+        (uint)Game.GenerateHash("player_two"),
+        (uint)Game.GenerateHash("mp_m_freemode_01"),
+        (uint)Game.GenerateHash("mp_f_freemode_01"),
+    };
+
+        foreach (uint pl in players)
         {
-            purchased_components[player] = new Dictionary<uint, List<uint>>();
-        }
-        if (!purchased_tints.ContainsKey(player))
-        {
-            purchased_tints[player] = new Dictionary<uint, List<int>>();
-        }
-        if (!install_components.ContainsKey(player))
-        {
-            install_components[player] = new Dictionary<uint, List<uint>>();
-        }
-        if (!install_ammo.ContainsKey(player))
-        {
-            install_ammo[player] = new Dictionary<uint, List<int>>();
-        }
-        if (!install_tints.ContainsKey(player))
-        {
-            install_tints[player] = new Dictionary<uint, List<int>>();
+            if (!purchased_components.ContainsKey(pl)) purchased_components[pl] = new Dictionary<uint, List<uint>>();
+            if (!purchased_tints.ContainsKey(pl)) purchased_tints[pl] = new Dictionary<uint, List<int>>();
+            if (!install_components.ContainsKey(pl)) install_components[pl] = new Dictionary<uint, List<uint>>();
+            if (!install_ammo.ContainsKey(pl)) install_ammo[pl] = new Dictionary<uint, List<int>>();
+            if (!install_tints.ContainsKey(pl)) install_tints[pl] = new Dictionary<uint, List<int>>();
         }
 
         List<uint> weaponsHashes = new List<uint>(purchased_components[player].Keys);
@@ -285,64 +278,38 @@ public class AddonWeapons : Script
 
         foreach (var weaponHash in weaponsHashes)
         {
+            if (!purchased_components[player].ContainsKey(weaponHash)) purchased_components[player][weaponHash] = new List<uint> { };
 
-            if (!purchased_components[player].ContainsKey(weaponHash))
-            {
-                purchased_components[player][weaponHash] = new List<uint> { };
-            }
-            if (!purchased_tints[player].ContainsKey(weaponHash))
-            {
-                purchased_tints[player][weaponHash] = new List<int> { };
-            }
-            if (!install_components[player].ContainsKey(weaponHash))
-            {
-                install_components[player][weaponHash] = new List<uint> { };
-            }
-            if (!install_ammo[player].ContainsKey(weaponHash))
-            {
-                install_ammo[player][weaponHash] = new List<int> { };
-            }
-            if (!install_tints[player].ContainsKey(weaponHash))
-            {
-                install_tints[player][weaponHash] = new List<int> { };
-            }
+            if (!purchased_tints[player].ContainsKey(weaponHash)) purchased_tints[player][weaponHash] = new List<int> { };
+            if (!install_components[player].ContainsKey(weaponHash)) install_components[player][weaponHash] = new List<uint> { };
+            if (!install_ammo[player].ContainsKey(weaponHash)) install_ammo[player][weaponHash] = new List<int> { };
+            if (!install_tints[player].ContainsKey(weaponHash)) install_tints[player][weaponHash] = new List<int> { };
 
-            if (!Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash))
-            {
-                Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 0, true, true);
-            }
+            if (!Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash)) Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 0, true, true);
 
             foreach (var componentHash in purchased_components[player][weaponHash])
             {
-                if (install_components[player][weaponHash].Contains(componentHash))
-                {
-                    Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
-                }
+                if (install_components[player][weaponHash].Contains(componentHash)) Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
             }
+
             foreach (var tint in purchased_tints[player][weaponHash])
             {
-                if (ValueContains(INSTALLTINT_DICT, player, weaponHash, 0, tint))
-                {
-                    Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint);
-                }
+                if (ValueContains(INSTALLTINT_DICT, player, weaponHash, 0, tint)) Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint);
             }
-            Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, install_ammo[player][weaponHash][0]);
+
+            if (install_ammo[player][weaponHash].Count > 0) Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, install_ammo[player][weaponHash][0]);
 
             if (current_weapon.ContainsKey(player))
             {
                 while (Function.Call<int>(Hash.GET_PLAYER_SWITCH_STATE) < 10) Script.Wait(0);
-
                 Function.Call(Hash.SET_CURRENT_PED_WEAPON, Game.Player.Character, current_weapon[player], false);
             }
 
             foreach (var Ped in World.GetAllPeds())
             {
-                if (Ped.Model.Hash == new Model("player_zero").Hash || Ped.Model.Hash == new Model("player_one").Hash || Ped.Model.Hash == new Model("player_two").Hash)
+                if (Ped.Model.Hash == new Model("player_zero").Hash || Ped.Model.Hash == new Model("player_one").Hash || Ped.Model.Hash == new Model("player_two").Hash || Ped.Model.Hash == new Model("mp_m_freemode_01").Hash || Ped.Model.Hash == new Model("mp_f_freemode_01").Hash)
                 {
-                    if (Ped != Game.Player.Character)
-                    {
-                        LoadInventoryForPed(Ped);
-                    }
+                    if (Ped != Game.Player.Character) LoadInventoryForPed(Ped);
                 }
             }
         }
@@ -357,6 +324,7 @@ public class AddonWeapons : Script
 
         foreach (var weaponHash in weaponsHashes)
         {
+
             if (!npc.Weapons.HasWeapon((WeaponHash)weaponHash))
             {
                 npc.Weapons.Give((WeaponHash)weaponHash, 0, true, true);
@@ -385,41 +353,67 @@ public class AddonWeapons : Script
 
     private void WaitLoadedInventory()
     {
-        if (Function.Call<bool>(Hash.IS_PLAYER_SWITCH_IN_PROGRESS))
+        if (last_player == 0)
         {
-            if (save_in_progress == 0)
-            {
-                SaveWeaponInInventory();
-                save_in_progress = 1;
-            }
-        }
-        else
-        {
-            if (save_in_progress == 1) save_in_progress = 0;
+            LoadInventory((uint)Game.Player.Character.Model.Hash);
+            SetCurrentLoadInventoryBool();
+            last_player = (uint)Game.Player.Character.Model.Hash;
         }
 
+        if ((uint)Game.Player.Character.Model.Hash != last_player)
+        {
+            SaveWeaponInInventory(last_player);
+            LoadInventory((uint)Game.Player.Character.Model.Hash);
+            SetCurrentLoadInventoryBool();
+            last_player = (uint)Game.Player.Character.Model.Hash;
+        }
+    }
+
+    private void SetCurrentLoadInventoryBool()
+    {
         if (!SP0_loaded && Game.Player.Character.Model.Hash == new Model("player_zero").Hash)
         {
-            LoadInventory();
             SP0_loaded = true;
             SP1_loaded = false;
             SP2_loaded = false;
+            MP0_loaded = false;
+            MP1_loaded = false;
         }
 
         if (!SP1_loaded && Game.Player.Character.Model.Hash == new Model("player_one").Hash)
         {
-            LoadInventory();
             SP0_loaded = false;
             SP1_loaded = true;
             SP2_loaded = false;
+            MP0_loaded = false;
+            MP1_loaded = false;
         }
 
         if (!SP2_loaded && Game.Player.Character.Model.Hash == new Model("player_two").Hash)
         {
-            LoadInventory();
             SP0_loaded = false;
             SP1_loaded = false;
             SP2_loaded = true;
+            MP0_loaded = false;
+            MP1_loaded = false;
+        }
+
+        if (!MP0_loaded && Game.Player.Character.Model.Hash == new Model("mp_m_freemode_01").Hash)
+        {
+            SP0_loaded = false;
+            SP1_loaded = false;
+            SP2_loaded = false;
+            MP0_loaded = true;
+            MP1_loaded = false;
+        }
+
+        if (!MP1_loaded && Game.Player.Character.Model.Hash == new Model("mp_f_freemode_01").Hash)
+        {
+            SP0_loaded = false;
+            SP1_loaded = false;
+            SP2_loaded = false;
+            MP0_loaded = false;
+            MP1_loaded = true;
         }
     }
 
@@ -749,45 +743,37 @@ public class AddonWeapons : Script
     private bool ValueContains(int type_dict, uint player, uint weaponHash, uint componentHash, int tint)
     {
         bool result = false;
+
         switch (type_dict)
         {
             case COMPONENTS_DICT:
-                if (!purchased_components[player].ContainsKey(weaponHash))
-                {
-                    purchased_components[player].Add(weaponHash, new List<uint> { });
-                }
+
+                if (!purchased_components.ContainsKey(player)) purchased_components[player] = new Dictionary<uint, List<uint>>();
+                if (!purchased_components[player].ContainsKey(weaponHash)) purchased_components[player].Add(weaponHash, new List<uint> { });
                 if (purchased_components[player][weaponHash].Contains(componentHash)) result = true;
                 break;
 
             case INSTALLCOMP_DICT:
-                if (!install_components[player].ContainsKey(weaponHash))
-                {
-                    install_components[player].Add(weaponHash, new List<uint> { });
-                }
+                if (!install_components.ContainsKey(player)) install_components[player] = new Dictionary<uint, List<uint>>();
+                if (!install_components[player].ContainsKey(weaponHash)) install_components[player].Add(weaponHash, new List<uint> { });
                 if (install_components[player][weaponHash].Contains(componentHash)) result = true;
                 break;
 
             case TINTS_DICT:
-                if (!purchased_tints[player].ContainsKey(weaponHash))
-                {
-                    purchased_tints[player].Add(weaponHash, new List<int> { });
-                }
+                if (!purchased_tints.ContainsKey(player)) purchased_tints[player] = new Dictionary<uint, List<int>>();
+                if (!purchased_tints[player].ContainsKey(weaponHash)) purchased_tints[player].Add(weaponHash, new List<int> { });
                 if (purchased_tints[player][weaponHash].Contains(tint)) result = true;
                 break;
 
             case AMMO_DICT:
-                if (!install_ammo[player].ContainsKey(weaponHash))
-                {
-                    install_ammo[player].Add(weaponHash, new List<int> { });
-                }
+                if (!install_ammo.ContainsKey(player)) install_ammo[player] = new Dictionary<uint, List<int>>();
+                if (!install_ammo[player].ContainsKey(weaponHash)) install_ammo[player].Add(weaponHash, new List<int> { });
                 if (install_ammo[player][weaponHash].Contains(tint)) result = true;
                 break;
 
             case INSTALLTINT_DICT:
-                if (!install_tints[player].ContainsKey(weaponHash))
-                {
-                    install_tints[player].Add(weaponHash, new List<int> { });
-                }
+                if (!install_tints.ContainsKey(player)) install_tints[player] = new Dictionary<uint, List<int>>();
+                if (!install_tints[player].ContainsKey(weaponHash)) install_tints[player].Add(weaponHash, new List<int> { });
                 if (install_tints[player][weaponHash].Contains(tint)) result = true;
                 break;
         }
@@ -912,12 +898,9 @@ public class AddonWeapons : Script
         weaponCategories[weaponTypeGroup].Add(weaponDataWithComponents);
     }
 
-    void SaveWeaponInInventory()
+    void SaveWeaponInInventory(uint player)
     {
-
-        uint player = (uint)Game.Player.Character.Model.Hash;
         List<uint> weaponsHashes = new List<uint>(purchased_components[player].Keys);
-
         foreach (var weaponHash in weaponsHashes)
         {
             if (purchased_components[player].ContainsKey(weaponHash))
@@ -947,7 +930,7 @@ public class AddonWeapons : Script
         uint player = (uint)Game.Player.Character.Model.Hash;
         item.Activated += (sender, args) =>
         {
-            if (Game.Player.Money < 1000)
+            if (Game.Player.Money < 1000 && Game.Player.Character.Model.Hash != new Model("mp_m_freemode_01").Hash && Game.Player.Character.Model.Hash != new Model("mp_f_freemode_01").Hash)
             {
                 GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
             }
@@ -1080,7 +1063,7 @@ public class AddonWeapons : Script
         NativeItem rounds_m = new NativeItem($"{_ROUNDS} x {defaultClipSize}", "", ammoCost);
         rounds_m.Activated += (sender3, args3) =>
         {
-            if (Game.Player.Money < cost)
+            if (Game.Player.Money < cost && Game.Player.Character.Model.Hash != new Model("mp_m_freemode_01").Hash && Game.Player.Character.Model.Hash != new Model("mp_f_freemode_01").Hash)
             {
                 GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
             }
@@ -1093,7 +1076,7 @@ public class AddonWeapons : Script
                     uint player = (uint)Game.Player.Character.Model.Hash;
                     int current_ammo = Function.Call<int>(Hash.GET_AMMO_IN_PED_WEAPON, Game.Player.Character, weaponHash);
                     AddDictValue(AMMO_DICT, player, weaponHash, 0, current_ammo);
-                    SaveWeaponInInventory();
+                    SaveWeaponInInventory(player);
 
                     if (IsmaxAmmo(weaponHash))
                     {
@@ -1248,7 +1231,7 @@ public class AddonWeapons : Script
             index++;
         }
 
-        SaveWeaponInInventory();
+        SaveWeaponInInventory(player);
     }
 
     bool HashComponentsAvailable(uint weaponHash)
@@ -1271,7 +1254,7 @@ public class AddonWeapons : Script
         Function.Call(Hash.SET_CURRENT_PED_WEAPON, Game.Player.Character, weaponHash, true);
         weap_m.Activated += (sender, args) =>
         {
-            if (Game.Player.Money < weapon.WeaponData.weaponCost)
+            if (Game.Player.Money < weapon.WeaponData.weaponCost && Game.Player.Character.Model.Hash != new Model("mp_m_freemode_01").Hash && Game.Player.Character.Model.Hash != new Model("mp_f_freemode_01").Hash)
             {
                 GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
             }
@@ -1346,7 +1329,7 @@ public class AddonWeapons : Script
                     Game.Player.Money -= weapon.WeaponData.weaponCost;
                     Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
                     AddDictValue(EMPTY_DICT, player, weaponHash, 0, 0);
-                    SaveWeaponInInventory();
+                    SaveWeaponInInventory(player);
                 }
 
                 weap_m.AltTitle = "";
@@ -1377,7 +1360,7 @@ public class AddonWeapons : Script
                     {
                         Function.Call(Hash.ADD_PED_AMMO_BY_TYPE, Game.Player.Character, Function.Call<Hash>(Hash.GET_PED_AMMO_TYPE_FROM_WEAPON, Game.Player.Character, weaponHash), 200);
                         AddDictValue(AMMO_DICT, player, weaponHash, 0, 200);
-                        SaveWeaponInInventory();
+                        SaveWeaponInInventory(player);
                     }
                 }
             }
@@ -1396,7 +1379,7 @@ public class AddonWeapons : Script
             List<uint> components_hashes = GetComponentsList(weapon);
             List<int> components_cost = GetComponentsCost(weapon);
             RefreshComponentMenu(ComponentMenu, components_hashes, components_cost);
-            SaveWeaponInInventory();
+            SaveWeaponInInventory(player);
         };
         return comp_m;
     }
