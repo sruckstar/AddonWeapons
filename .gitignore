@@ -11,3 +11,5 @@ AddonWeapons/obj/Release/.NETFramework,Version=v4.8.AssemblyAttributes.cs
 AddonWeapons/obj/Release/AddonWeapons.csproj.FileListAbsolute.txt
 AddonWeapons/Properties/AssemblyInfo.cs
 *.rar
+/AddonWeapons/.vs/AddonWeapons.csproj.dtbcache.json
+/AddonWeapons/obj
