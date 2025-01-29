@@ -35,10 +35,10 @@
   <ItemGroup>
     <Reference Include="LemonUI.SHVDN3, Version=2.1.2.0, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>D:\Games\Rockstar Games\Grand Theft Auto V (Modding)\scripts\LemonUI.SHVDN3.dll</HintPath>
+      <HintPath>D:\Rockstar Games\Games\VMods\ScriptHookDotNetV\scripts\LemonUI.SHVDN3.dll</HintPath>
     </Reference>
     <Reference Include="ScriptHookVDotNet3">
-      <HintPath>D:\Games\Rockstar Games\Grand Theft Auto V\ScriptHookVDotNet3.dll</HintPath>
+      <HintPath>D:\Rockstar Games\Games\VMods\ScriptHookDotNetV\ScriptHookVDotNet3.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -53,10 +53,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AddonWeapons.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
