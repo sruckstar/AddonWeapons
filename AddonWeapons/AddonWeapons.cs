@@ -417,7 +417,15 @@ public class AddonWeapons : Script
 
             foreach (var tint in purchased_tints[player][weaponHash])
             {
-                if (ValueContains(INSTALLTINT_DICT, player, weaponHash, 0, tint)) Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint);
+                if (ValueContains(INSTALLTINT_DICT, player, weaponHash, 0, tint))
+                {
+                    Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash, tint);
+
+                    foreach (var componentHash in purchased_components[player][weaponHash])
+                    {
+                        Function.Call(Hash.SET_PED_WEAPON_COMPONENT_TINT_INDEX, Game.Player.Character.Handle, weaponHash, componentHash, tint);
+                    }
+                }
             }
 
             if (install_ammo[player][weaponHash].Count > 0) Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, install_ammo[player][weaponHash][0]);
