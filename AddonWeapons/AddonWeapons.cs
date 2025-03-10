@@ -42,6 +42,8 @@ public class AddonWeapons : Script
     NativeMenu ThrownMenu;
     NativeMenu ComponentMenu;
 
+    NativeMenu CurrentOpenedMenu;
+
     const int EMPTY_DICT = -1;
     const int COMPONENTS_DICT = 0;
     const int INSTALLCOMP_DICT = 1;
@@ -97,6 +99,7 @@ public class AddonWeapons : Script
     bool MP1_loaded = false;
     uint current_weapon_hash = 0;
     uint last_player = 0;
+    int menuOpenedFlag = 0;
 
     int save_in_progress = 0;
 
@@ -169,6 +172,8 @@ public class AddonWeapons : Script
         90000
     };
 
+    List<int> price_tints = new List<int> { };
+
     List<Vector3> box_pos = new List<Vector3>()
     {
         new Vector3(19.04f, -1103.96f, 29.24f),
@@ -212,6 +217,9 @@ public class AddonWeapons : Script
 
     List<NativeMenu> CustomMenusList = new List<NativeMenu>() { };
 
+    List<uint> NoAmmoWeaponList = new List<uint>() { };
+    List<uint> DisableComponentsList = new List<uint>() { };
+
     public AddonWeapons()
     {
         SetLanguage();
@@ -251,97 +259,6 @@ public class AddonWeapons : Script
                 return parameters;
             }
         }
-        GTA.UI.Notification.Show($"Invalid parameters for {commandName}: {command}");
-        return null;
-    }
-
-    private void FindWeapon(string weaponName)
-    {
-        uint weaponHash = (uint)Game.GenerateHash(weaponName);
-        if (Function.Call<bool>(Hash.HAS_WEAPON_ASSET_LOADED, weaponHash))
-        {
-            GTA.UI.Notification.Show($"Weapon found: {weaponName}");
-        }
-        else
-        {
-            GTA.UI.Notification.Show($"Weapon not found: {weaponName}");
-        }
-    }
-
-    private void CreateWeaponCategory(string itemName)
-    {
-        uint categoryHash = (uint)itemName.GetHashCode();
-        if (!weaponCategories.ContainsKey(categoryHash))
-        {
-            weaponCategories[categoryHash] = new List<DlcWeaponDataWithComponents>();
-            GTA.UI.Notification.Show($"Category created: {itemName}");
-        }
-        else
-        {
-            GTA.UI.Notification.Show($"Category already exists: {itemName}");
-        }
-    }
-
-    private void PutWeaponToCategory(string modelName, string itemName)
-    {
-        uint weaponHash = (uint)Game.GenerateHash(modelName);
-        uint categoryHash = (uint)itemName.GetHashCode();
-
-        if (!weaponCategories.ContainsKey(categoryHash))
-        {
-            CreateWeaponCategory(itemName);
-        }
-
-        foreach (var category in weaponCategories)
-        {
-            if (category.Value.RemoveAll(w => w.WeaponData.weaponHash == weaponHash) > 0)
-            {
-                break;
-            }
-        }
-
-        if (Function.Call<bool>(Hash.IS_WEAPON_VALID, weaponHash))
-        {
-            DlcWeaponDataWithComponents weapon = GetWeaponData(weaponHash);
-            weaponCategories[categoryHash].Add(weapon);
-            GTA.UI.Notification.Show($"Weapon {modelName} moved to category {itemName}.");
-        }
-        else
-        {
-            GTA.UI.Notification.Show($"Invalid weapon: {modelName}");
-        }
-    }
-
-    private void SetWeaponCost(string weaponName, int weaponCost)
-    {
-        uint weaponHash = (uint)Game.GenerateHash(weaponName);
-        foreach (var category in weaponCategories)
-        {
-            foreach (var weapon in category.Value)
-            {
-                if (weapon.WeaponData.weaponHash == weaponHash)
-                {
-                    //weapon.WeaponData.weaponCost = weaponCost;
-                    GTA.UI.Notification.Show($"Cost of {weaponName} set to ${weaponCost}.");
-                    return;
-                }
-            }
-        }
-        GTA.UI.Notification.Show($"Weapon not found: {weaponName}");
-    }
-
-    private DlcWeaponDataWithComponents GetWeaponData(uint weaponHash)
-    {
-        foreach (var category in weaponCategories)
-        {
-            foreach (var weapon in category.Value)
-            {
-                if (weapon.WeaponData.weaponHash == weaponHash)
-                {
-                    return weapon;
-                }
-            }
-        }
         return null;
     }
 
@@ -371,8 +288,14 @@ public class AddonWeapons : Script
             }
         }
 
+        purchased_components.Clear();
+        purchased_tints.Clear();
+        install_components.Clear();
+        install_ammo.Clear();
+        install_tints.Clear();
+
         if (!Directory.Exists($"Scripts\\AddonWeapons\\bin")) Directory.CreateDirectory($"Scripts\\AddonWeapons\\bin");
-        if (File.Exists($"Scripts\\AddonWeapons\\bin\\components.bin"))  purchased_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\bin\\components.bin");
+        if (File.Exists($"Scripts\\AddonWeapons\\bin\\components.bin")) purchased_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\bin\\components.bin");
         if (File.Exists($"Scripts\\AddonWeapons\\bin\\tints.bin")) purchased_tints = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\tints.bin");
         if (File.Exists($"Scripts\\AddonWeapons\\bin\\install_components.bin")) install_components = DeserializeDictionary<uint, uint, uint>("Scripts\\AddonWeapons\\bin\\install_components.bin");
         if (File.Exists($"Scripts\\AddonWeapons\\bin\\install_ammo.bin")) install_ammo = DeserializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\install_ammo.bin");
@@ -412,7 +335,11 @@ public class AddonWeapons : Script
 
             foreach (var componentHash in purchased_components[player][weaponHash])
             {
-                if (install_components[player][weaponHash].Contains(componentHash)) Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
+                if (install_components[player][weaponHash].Contains(componentHash))
+                {
+                    Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, Game.Player.Character.Handle, weaponHash, componentHash);
+                }
+
             }
 
             foreach (var tint in purchased_tints[player][weaponHash])
@@ -424,6 +351,7 @@ public class AddonWeapons : Script
                     foreach (var componentHash in purchased_components[player][weaponHash])
                     {
                         Function.Call(Hash.SET_PED_WEAPON_COMPONENT_TINT_INDEX, Game.Player.Character.Handle, weaponHash, componentHash, tint);
+                        int test = Function.Call<int>(Hash.GET_PED_WEAPON_COMPONENT_TINT_INDEX, Game.Player.Character.Handle, weaponHash, componentHash);
                     }
                 }
             }
@@ -448,7 +376,7 @@ public class AddonWeapons : Script
 
     private void LoadInventoryForPed(Ped npc)
     {
-        uint player = (uint)npc.Model.Hash;
+        uint player = (uint)npc.Model.Hash;      
 
         List<uint> weaponsHashes = new List<uint>(purchased_components[player].Keys);
         if (weaponsHashes.Count == 0) return;
@@ -461,24 +389,38 @@ public class AddonWeapons : Script
                 npc.Weapons.Give((WeaponHash)weaponHash, 0, true, true);
             }
 
-            foreach (var componentHash in purchased_components[player][weaponHash])
+            if (install_components[player].ContainsKey(weaponHash))
             {
-                if (ValueContains(INSTALLCOMP_DICT, player, weaponHash, componentHash, 0))
+                foreach (var componentHash in install_components[player][weaponHash])
                 {
-                    if (!Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, npc, weaponHash, componentHash))
+                    if (ValueContains(INSTALLCOMP_DICT, player, weaponHash, componentHash, 0))
                     {
-                        Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, npc.Handle, weaponHash, componentHash);
+                        if (!Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, npc, weaponHash, componentHash))
+                        {
+                            Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, npc.Handle, weaponHash, componentHash);
+                        }
                     }
                 }
             }
-            foreach (var tint in purchased_tints[player][weaponHash])
+
+            if (purchased_tints[player].ContainsKey(weaponHash))
             {
-                if (ValueContains(INSTALLTINT_DICT, player, weaponHash, 0, tint))
+                foreach (var tint in purchased_tints[player][weaponHash])
                 {
-                    Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, npc, weaponHash, tint);
+                    if (ValueContains(INSTALLTINT_DICT, player, weaponHash, 0, tint))
+                    {
+                        Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, npc, weaponHash, tint);
+                    }
                 }
             }
+
             Function.Call(Hash.ADD_AMMO_TO_PED, npc, weaponHash, install_ammo[player][weaponHash][0]);
+
+            if (current_weapon.ContainsKey(player))
+            {
+                Function.Call(Hash.SET_CURRENT_PED_WEAPON, npc, current_weapon[player], true);
+
+            }
         }
     }
 
@@ -487,6 +429,7 @@ public class AddonWeapons : Script
         if (last_player == 0)
         {
             LoadInventory((uint)Game.Player.Character.Model.Hash);
+            RefreshPedInventory();
             SetCurrentLoadInventoryBool();
             last_player = (uint)Game.Player.Character.Model.Hash;
         }
@@ -494,6 +437,7 @@ public class AddonWeapons : Script
         if ((uint)Game.Player.Character.Model.Hash != last_player)
         {
             SaveWeaponInInventory(last_player);
+            RefreshPedInventory();
             LoadInventory((uint)Game.Player.Character.Model.Hash);
             SetCurrentLoadInventoryBool();
             last_player = (uint)Game.Player.Character.Model.Hash;
@@ -548,7 +492,7 @@ public class AddonWeapons : Script
         }
     }
 
-    private void  SetCurrentWeapon()
+    private void SetCurrentWeapon()
     {
         uint player = (uint)Game.Player.Character.Model.Hash;
 
@@ -773,7 +717,7 @@ public class AddonWeapons : Script
                     }
                 }
             }
-        }    
+        }
     }
 
     private void AddDictValue(int type_dict, uint player, uint weaponHash, uint componentHash, int tint)
@@ -853,7 +797,7 @@ public class AddonWeapons : Script
                 {
                     purchased_components[player].Add(weaponHash, new List<uint> { });
                 }
-                purchased_components[player][weaponHash].Remove(componentHash);
+                purchased_components[player][weaponHash].RemoveAll(e => (e == componentHash));
                 break;
 
             case INSTALLCOMP_DICT:
@@ -861,7 +805,7 @@ public class AddonWeapons : Script
                 {
                     install_components[player].Add(weaponHash, new List<uint> { });
                 }
-                install_components[player][weaponHash].Remove(componentHash);
+                install_components[player][weaponHash].RemoveAll(e => (e == componentHash));
                 break;
 
             case TINTS_DICT:
@@ -869,7 +813,7 @@ public class AddonWeapons : Script
                 {
                     purchased_tints[player].Add(weaponHash, new List<int> { });
                 }
-                purchased_tints[player][weaponHash].Remove(tint);
+                purchased_tints[player][weaponHash].RemoveAll(e => (e == tint));
                 break;
 
             case AMMO_DICT:
@@ -877,7 +821,7 @@ public class AddonWeapons : Script
                 {
                     install_ammo[player].Add(weaponHash, new List<int> { });
                 }
-                install_ammo[player][weaponHash].Remove(tint);
+                install_ammo[player][weaponHash].RemoveAll(e => (e == tint));
                 break;
 
             case INSTALLTINT_DICT:
@@ -885,7 +829,7 @@ public class AddonWeapons : Script
                 {
                     install_tints[player].Add(weaponHash, new List<int> { });
                 }
-                install_tints[player][weaponHash].Remove(tint);
+                install_tints[player][weaponHash].RemoveAll(e => (e == tint));
                 break;
         }
     }
@@ -938,7 +882,7 @@ public class AddonWeapons : Script
             {
                 box.Delete();
             }
-        }    
+        }
     }
 
     private void OnAborted(object sender, EventArgs e)
@@ -961,12 +905,13 @@ public class AddonWeapons : Script
         CreateAmmoBoxesThisFrame();
         WaitLoadedInventory();
         SetCurrentWeapon();
-        RefreshPedInventory();
+        ReOpenLastMenu();
+
     }
 
     private bool IsMenuOpen()
     {
-        if (menu.Visible || HeavyMenu.Visible || MeleeMenu.Visible || MachineGunsMenu.Visible || PistolsMenu.Visible || RiflesMenu.Visible || ShotgunsMenu.Visible || SMGsMenu.Visible || SniperRiflesMenu.Visible || StunGunMenu.Visible || ThrownMenu.Visible || ComponentMenu.Visible)
+        if (pool.AreAnyVisible && menuOpenedFlag == 1)
         {
             return true;
         }
@@ -975,18 +920,96 @@ public class AddonWeapons : Script
 
     private void CloseAllMenus()
     {
-        menu.Visible = false;
-        HeavyMenu.Visible = false;
-        MeleeMenu.Visible = false;
-        MachineGunsMenu.Visible = false;
-        PistolsMenu.Visible = false;
-        RiflesMenu.Visible = false;
-        ShotgunsMenu.Visible = false;
-        SMGsMenu.Visible = false;
-        SniperRiflesMenu.Visible = false;
-        StunGunMenu.Visible = false;
-        ThrownMenu.Visible = false;
-        ComponentMenu.Visible = false;
+        if (menu.Visible)
+        {
+            menu.Visible = false;
+            CurrentOpenedMenu = menu;
+        }
+
+        if (HeavyMenu.Visible)
+        {
+
+            HeavyMenu.Visible = false;
+            CurrentOpenedMenu = HeavyMenu;
+        }
+
+        if (MeleeMenu.Visible)
+        {
+            MeleeMenu.Visible = false;
+            CurrentOpenedMenu = MeleeMenu;
+        }
+
+        if (MachineGunsMenu.Visible)
+        {
+            MachineGunsMenu.Visible = false;
+            CurrentOpenedMenu = MachineGunsMenu;
+        }
+
+        if (PistolsMenu.Visible)
+        {
+            PistolsMenu.Visible = false;
+            CurrentOpenedMenu = PistolsMenu;
+        }
+
+        if (RiflesMenu.Visible)
+        {
+            RiflesMenu.Visible = false;
+            CurrentOpenedMenu = RiflesMenu;
+        }
+
+        if (ShotgunsMenu.Visible)
+        {
+            ShotgunsMenu.Visible = false;
+            CurrentOpenedMenu = ShotgunsMenu;
+        }
+
+        if (SMGsMenu.Visible)
+        {
+            SMGsMenu.Visible = false;
+            CurrentOpenedMenu = SMGsMenu;
+        }
+
+        if (SniperRiflesMenu.Visible)
+        {
+            SniperRiflesMenu.Visible = false;
+            CurrentOpenedMenu = SniperRiflesMenu;
+        }
+
+        if (StunGunMenu.Visible)
+        {
+            StunGunMenu.Visible = false;
+            CurrentOpenedMenu = StunGunMenu;
+        }
+
+        if (ThrownMenu.Visible)
+        {
+            ThrownMenu.Visible = false;
+            CurrentOpenedMenu = ThrownMenu;
+        }
+
+        if (ComponentMenu.Visible)
+        {
+            ComponentMenu.Visible = false;
+            CurrentOpenedMenu = ComponentMenu;
+        }
+
+        foreach (NativeMenu custom in CustomMenusList)
+        {
+            if (custom.Visible)
+            {
+                custom.Visible = false;
+                CurrentOpenedMenu = custom;
+            }
+        }
+    }
+
+    private void ReOpenLastMenu()
+    {
+        if (CurrentOpenedMenu != null && !ComponentMenu.Visible)
+        {
+            CurrentOpenedMenu.Visible = true;
+            CurrentOpenedMenu = null;
+        }
     }
 
     private void GetDlcWeaponModels()
@@ -1075,12 +1098,12 @@ public class AddonWeapons : Script
         SerializeDictionary<uint, uint, int>("Scripts\\AddonWeapons\\bin\\install_tints.bin", install_tints);
     }
 
-    NativeItem ActivateLivery(DlcWeaponDataWithComponents weapon, NativeItem item, int livery_id, uint weaponHash, BadgeSet badge)
+    NativeItem ActivateLivery(DlcWeaponDataWithComponents weapon, NativeItem item, int livery_id, uint weaponHash, int tintPrice)
     {
         uint player = (uint)Game.Player.Character.Model.Hash;
         item.Activated += (sender, args) =>
         {
-            if (Game.Player.Money < 1000 && Game.Player.Character.Model.Hash != new Model("mp_m_freemode_01").Hash && Game.Player.Character.Model.Hash != new Model("mp_f_freemode_01").Hash)
+            if (Game.Player.Money < tintPrice && Game.Player.Character.Model.Hash != new Model("mp_m_freemode_01").Hash && Game.Player.Character.Model.Hash != new Model("mp_f_freemode_01").Hash)
             {
                 GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
             }
@@ -1093,7 +1116,7 @@ public class AddonWeapons : Script
                 }
                 else
                 {
-                    Game.Player.Money -= 1000;
+                    Game.Player.Money -= tintPrice;
                     AddDictValue(TINTS_DICT, player, weaponHash, 0, livery_id);
                 }
 
@@ -1109,66 +1132,54 @@ public class AddonWeapons : Script
     {
         List<string> tints = new List<string>();
         int count = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weaponHash);
-        int temp_index = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash);
+        int current_weap_tint = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, weaponHash);
         string filePath = $"Scripts\\AddonWeapons\\tints\\{WeapLabel}.txt";
-        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
+        int tint_count = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weaponHash);
+        string tint_name = null;
 
         if (File.Exists(filePath))
         {
+            price_tints.Clear();
             using (StreamReader reader = new StreamReader(filePath))
             {
                 string line;
+                tint_count = 0;
                 while ((line = reader.ReadLine()) != null)
                 {
                     tints.Add(line);
+                    price_tints.Add(1000);
+                    tint_count++;
                 }
-            }
-
-            for (int i = 0; i < tints.Count; i++)
-            {
-                NativeItem tint_m = new NativeItem(tints[i], "", "$1000");
-                tint_m = ActivateLivery(weapon, tint_m, i, weaponHash, shop_gun);
-
-                if (temp_index == i)
-                {
-                    tint_m.AltTitle = "";
-                    tint_m.RightBadgeSet = shop_gun;
-                }
-
-                ComponentMenu.Add(tint_m);
             }
         }
         else
         {
-            int tint_count = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weaponHash);
-            string tint_name;
-
             if (tint_count == 8)
             {
                 tint_name = "WM_TINT";
-                List<int> price_temp = price_standard;
+                price_tints = price_standard;
             }
             else
             {
+                tint_count = 32;
                 tint_name = "WCT_TINT_";
-                List<int> price_temp = price_mk2;
+                price_tints = price_mk2;
             }
 
             for (int i = 0; i < tint_count; i++)
             {
+                if (tint_name == null) tint_name = tints[i];
                 string LiveryName = Game.GetLocalizedString($"{tint_name}{i}");
-                if (LiveryName.Length < 2) continue; 
-                NativeItem tint_m = new NativeItem(LiveryName, "", "$1000");
-                tint_m = ActivateLivery(weapon, tint_m, i, weaponHash, shop_gun);
-
-                if (temp_index == i)
-                {
-                    tint_m.AltTitle = "";
-                    tint_m.RightBadgeSet = shop_gun;
-                }
-
-                ComponentMenu.Add(tint_m);
+                if (LiveryName.Length < 2) LiveryName = "Livery " + i;
+                tints.Add(LiveryName);
             }
+        }
+
+        for (int i = 0; i < tints.Count; i++)
+        {
+            NativeItem tint_m = new NativeItem(tints[i], "", $"${price_tints[i]}");
+            tint_m = ActivateLivery(weapon, tint_m, i, weaponHash, price_tints[i]);
+            ComponentMenu.Add(tint_m);
         }
     }
 
@@ -1309,6 +1320,7 @@ public class AddonWeapons : Script
 
     private void RefreshComponentMenu(NativeMenu ComponentMenu, List<uint> components_hashes, List<int> components_cost)
     {
+
         uint player = (uint)Game.Player.Character.Model.Hash;
         BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
         BadgeSet shop_tick = CreateBafgeFromItem("commonmenu", "shop_tick_icon", "commonmenu", "shop_tick_icon");
@@ -1318,7 +1330,7 @@ public class AddonWeapons : Script
 
         foreach (var item in items)
         {
-            if (IsRounds)
+            if (IsRounds) //Skip the first item (rounds)
             {
                 IsRounds = false;
                 continue;
@@ -1347,7 +1359,7 @@ public class AddonWeapons : Script
                     }
                     else
                     {
-                        item.AltTitle = "$1000";
+                        item.AltTitle = $"${price_tints[index]}";
                         item.RightBadgeSet = null;
                     }
                 }
@@ -1386,24 +1398,26 @@ public class AddonWeapons : Script
 
     bool HashComponentsAvailable(uint weaponHash)
     {
-        bool result = false;
-
-        if ((WeaponHash)weaponHash == WeaponHash.Bat || (WeaponHash)weaponHash == WeaponHash.Knife || Function.Call<uint>(Hash.GET_WEAPONTYPE_GROUP, weaponHash) != GROUP_MELEE)
+        if (Function.Call<uint>(Hash.GET_WEAPONTYPE_GROUP, weaponHash) == GROUP_MELEE ||
+            Function.Call<uint>(Hash.GET_WEAPONTYPE_GROUP, weaponHash) == GROUP_THROWN ||
+            DisableComponentsList.Contains(weaponHash))
         {
-            result = true;
+            return false;
         }
 
-        return result;
+        return true;
     }
 
     private NativeItem CreateWeaponItem(DlcWeaponDataWithComponents weapon, string WeapName, string WeapDesc, int WeapCost, uint weaponHash)
     {
-        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
         uint player = (uint)Game.Player.Character.Model.Hash;
         NativeItem weap_m = new NativeItem(WeapName, WeapDesc, $"${WeapCost}");
         Function.Call(Hash.SET_CURRENT_PED_WEAPON, Game.Player.Character, weaponHash, true);
+        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
+
         weap_m.Activated += (sender, args) =>
         {
+            ComponentMenu.Name = WeapName;
             if (Game.Player.Money < WeapCost && Game.Player.Character.Model.Hash != new Model("mp_m_freemode_01").Hash && Game.Player.Character.Model.Hash != new Model("mp_f_freemode_01").Hash)
             {
                 GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
@@ -1414,6 +1428,7 @@ public class AddonWeapons : Script
                 {
                     if (HashComponentsAvailable(weaponHash))
                     {
+                        
                         current_weapon_hash = weaponHash;
                         CloseAllMenus();
                         ComponentMenu.Clear();
@@ -1423,8 +1438,13 @@ public class AddonWeapons : Script
                             int defaultClipSize = weapon.WeaponData.defaultClipSize;
                             string ammoCost = $"${weapon.WeaponData.ammoCost}";
                             string WeapLabel = weapon.WeaponData.GetNameLabel();
-                            NativeItem rounds_m = CreateAmmoItem(defaultClipSize, ammoCost, weapon.WeaponData.ammoCost, weaponHash);
-                            ComponentMenu.Add(rounds_m);
+                            if (!NoAmmoWeaponList.Contains(weaponHash))
+                            {
+                                rounds = 1;
+                                NativeItem rounds_m = CreateAmmoItem(defaultClipSize, ammoCost, weapon.WeaponData.ammoCost, weaponHash);
+                                ComponentMenu.Add(rounds_m);
+                            }
+                            
                             CreateWeaponLivery(weapon, WeapLabel, weaponHash);
 
                             if ((WeaponHash)weaponHash == WeaponHash.StunGunMultiplayer)
@@ -1473,17 +1493,31 @@ public class AddonWeapons : Script
                         }
                         ComponentMenu.Visible = true;
                     }
+                    else
+                    {
+                        Game.Player.Money -= WeapCost;
+                        Function.Call(Hash.ADD_AMMO_TO_PED, Game.Player.Character, weaponHash, 1);
+                    }
                 }
                 else
                 {
                     Game.Player.Money -= WeapCost;
-                    Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
+
+                    if (Function.Call<uint>(Hash.GET_WEAPONTYPE_GROUP, weaponHash) == GROUP_MELEE ||
+                        Function.Call<uint>(Hash.GET_WEAPONTYPE_GROUP, weaponHash) == GROUP_THROWN)
+                    {
+                        Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1, true, true);
+                    }
+                    else
+                    {
+                        weap_m.AltTitle = ""; //Create badge after weapon buy
+                        weap_m.RightBadgeSet = shop_gun;
+                        Game.Player.Character.Weapons.Give((WeaponHash)weaponHash, 1000, true, true);
+                    }
+
                     AddDictValue(EMPTY_DICT, player, weaponHash, 0, 0);
                     SaveWeaponInInventory(player);
                 }
-
-                weap_m.AltTitle = "";
-                weap_m.RightBadgeSet = shop_gun;
             }
         };
         return weap_m;
@@ -1510,13 +1544,12 @@ public class AddonWeapons : Script
                     {
                         Function.Call(Hash.ADD_PED_AMMO_BY_TYPE, Game.Player.Character, Function.Call<Hash>(Hash.GET_PED_AMMO_TYPE_FROM_WEAPON, Game.Player.Character, weaponHash), 200);
                         AddDictValue(AMMO_DICT, player, weaponHash, 0, 200);
-                        SaveWeaponInInventory(player);
                     }
                 }
             }
             else
             {
-                if (Game.Player.Money < cost_int)
+                if (Game.Player.Money < cost_int && Game.Player.Character.Model.Hash != new Model("mp_m_freemode_01").Hash && Game.Player.Character.Model.Hash != new Model("mp_f_freemode_01").Hash)
                 {
                     GTA.UI.Screen.ShowSubtitle(_NO_MONEY);
                 }
@@ -1558,10 +1591,9 @@ public class AddonWeapons : Script
 
     private void SetMenuItems()
     {
-        NativeItem weap_bat = null;
-        NativeItem weap_knife = null;
         NativeItem blocked = null;
-        int WeaponCostInt = 0;
+
+        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
 
         string[] commands = File.ReadAllLines($"Scripts\\AddonWeapons\\commandline.txt");
 
@@ -1601,11 +1633,8 @@ public class AddonWeapons : Script
                     }
                 }
 
-                BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
-
                 NativeItem weap_m = CreateWeaponItem(weapon, WeapName, WeapDesc, WeapCost, weaponHash);
-
-                if (Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash))
+                if (Game.Player.Character.Weapons.HasWeapon((WeaponHash)weaponHash) && HashComponentsAvailable(weaponHash))
                 {
                     weap_m.AltTitle = "";
                     weap_m.RightBadgeSet = shop_gun;
@@ -1619,6 +1648,80 @@ public class AddonWeapons : Script
                         string[] parameters = ExtractParameters(trimmedCommand, "PutWeaponToCategory", 2);
                         if (parameters != null)
                         {
+                            switch(parameters[1])
+                            {
+                                case "GROUP_HEAVY":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        HeavyMenu.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_MELEE":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        MeleeMenu.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_MG":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        MachineGunsMenu.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_PISTOL":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        PistolsMenu.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_RIFLE":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        RiflesMenu.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_SHOTGUN":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        ShotgunsMenu.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_SMG":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        SMGsMenu.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_SNIPER":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        SniperRiflesMenu.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_STUNGUN":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        StunGunMenu.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_THROWN":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        ThrownMenu.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                            }
+
                             foreach (NativeMenu custom in CustomMenusList)
                             {
                                 if (new Model(parameters[0]).Hash == (int)weaponHash && custom.Name == parameters[1])
@@ -1626,7 +1729,7 @@ public class AddonWeapons : Script
                                     custom.Add(weap_m);
                                     blocked = weap_m;
                                     break;
-                                }       
+                                }
                             }
                         }
                     }
@@ -1642,6 +1745,7 @@ public class AddonWeapons : Script
                         break;
                     case GROUP_MELEE:
                         MeleeMenu.Add(weap_m);
+                        NoAmmoWeaponList.Add(weaponHash);
                         break;
                     case GROUP_MG:
                         MachineGunsMenu.Add(weap_m);
@@ -1663,6 +1767,7 @@ public class AddonWeapons : Script
                         break;
                     case GROUP_STUNGUN:
                         StunGunMenu.Add(weap_m);
+                        NoAmmoWeaponList.Add(weaponHash);
                         break;
                     case GROUP_THROWN:
                         ThrownMenu.Add(weap_m);
