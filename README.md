@@ -33,7 +33,7 @@ Commandline.txt allows you to add new categories to the menu, move weapons from 
 - PutWeaponToCategory(ModelName, CategoryName)
 - SetWeaponCost(ModelName, IntCost)
 
-**Example:**
+**Example:**  
 CreateWeaponCategory(New Pistols)  
 PutWeaponToCategory(WEAPON_FLAREGUN, New Pistols)  
 SetWeaponCost(WEAPON_FLAREGUN, 666666)  
