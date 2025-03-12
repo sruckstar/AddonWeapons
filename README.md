@@ -34,9 +34,9 @@ Commandline.txt allows you to add new categories to the menu, move weapons from 
 - SetWeaponCost(ModelName, IntCost)
 
 **Example:**
-CreateWeaponCategory(New Pistols)
-PutWeaponToCategory(WEAPON_FLAREGUN, New Pistols)
-SetWeaponCost(WEAPON_FLAREGUN, 666666)
+CreateWeaponCategory(New Pistols)  
+PutWeaponToCategory(WEAPON_FLAREGUN, New Pistols)  
+SetWeaponCost(WEAPON_FLAREGUN, 666666)  
 
 You can move weapons to one of the categories already existing in the mod, using one of the following parameters as the name:
 
