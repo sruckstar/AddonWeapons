@@ -23,3 +23,44 @@ To display weapon components in the menu, fill in the `weapon_shop.meta` file co
 # Weapon tints (for mod authors)
 For the tint names to be displayed correctly in the purchase menu, you need to adhere to Rockstar standards: either use a set of 8 tints from standard weapons or a set of 32 tints from MKII weapons.
 If you are not adding all the tints in your mod, or combining them from different types of weapons, you will need to create a text file in the AddonWeapons/tints folder with the name of the weapon from `weapon_shop.meta`, and write all the tints names line by line. Otherwise, the menu will display tints without names (Tint 1, Tint 2, etc.), or the names will not correspond to the actual weapon tint.
+
+# Commandline.txt
+
+Commandline.txt allows you to add new categories to the menu, move weapons from one category to another, and set your own weapon prices. The file can be found in the AddonWeapons folder.
+
+**Available commands at this time:**
+CreateWeaponCategory(Name)
+PutWeaponToCategory(ModelName, CategoryName)
+SetWeaponCost(ModelName, IntCost)
+
+**Example:**
+CreateWeaponCategory(New Pistols)
+PutWeaponToCategory(WEAPON_FLAREGUN, New Pistols)
+SetWeaponCost(WEAPON_FLAREGUN, 666666)
+
+You can move weapons to one of the categories already existing in the mod, using one of the following parameters as the name:
+
+GROUP_HEAVY
+GROUP_MELEE
+GROUP_MG
+GROUP_PISTOL
+GROUP_RIFLE
+GROUP_SHOTGUN
+GROUP_SMG
+GROUP_SNIPER
+GROUP_STUNGUN
+GROUP_THROWN
+GROUP_DIGISCANNER
+GROUP_FIREEXTINGUISHER
+GROUP_HACKINGDEVICE
+GROUP_NIGHTVISION
+GROUP_PARACHUTE
+GROUP_PETROLCAN
+GROUP_TRANQILIZER
+GROUP_RUBBERGUN
+
+**Example:**
+PutWeaponToCategory(WEAPON_FLAREGUN, GROUP_MELEE)
+
+This command will move the flare gun into the melee weapon category
+
