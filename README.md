@@ -29,9 +29,9 @@ If you are not adding all the tints in your mod, or combining them from differen
 Commandline.txt allows you to add new categories to the menu, move weapons from one category to another, and set your own weapon prices. The file can be found in the AddonWeapons folder.
 
 **Available commands at this time:**
-CreateWeaponCategory(Name)
-PutWeaponToCategory(ModelName, CategoryName)
-SetWeaponCost(ModelName, IntCost)
+- CreateWeaponCategory(Name)
+- PutWeaponToCategory(ModelName, CategoryName)
+- SetWeaponCost(ModelName, IntCost)
 
 **Example:**
 CreateWeaponCategory(New Pistols)
