@@ -14,6 +14,7 @@ using LemonUI.Menus;
 using LemonUI.Elements;
 using LemonUI.Extensions;
 using LemonUI.Tools;
+using System.Globalization;
 
 public class AddonWeapons : Script
 {
@@ -40,6 +41,15 @@ public class AddonWeapons : Script
     NativeMenu SniperRiflesMenu;
     NativeMenu StunGunMenu;
     NativeMenu ThrownMenu;
+    NativeMenu RubberGuns;
+    NativeMenu DigiScaners;
+    NativeMenu FireExtinguishers;
+    NativeMenu HackingDevices;
+    NativeMenu MetalDetectors;
+    NativeMenu NightVisions;
+    NativeMenu Parachutes;
+    NativeMenu PetrolCans;
+    NativeMenu Tranquilizers;
     NativeMenu ComponentMenu;
 
     NativeMenu CurrentOpenedMenu;
@@ -69,7 +79,7 @@ public class AddonWeapons : Script
     const uint GROUP_STUNGUN = 690389602u;
     const uint GROUP_THROWN = 1548507267u;
     const uint GROUP_TRANQILIZER = 75159441u;
-    const uint GROUP_UNARMED = 2685387236u;
+    const uint GROUP_RUBBERGUN = 88899580u;
     const int MAX_DLC_WEAPONS = 69;
 
     string _TITLE_MAIN;
@@ -87,6 +97,15 @@ public class AddonWeapons : Script
     string _MAX_ROUNDS;
     string _HELP_MESSAGE;
     string _NO_MONEY;
+    string _RUBBERGUN;
+    string _DIGISCANNER;
+    string _FIREEXTINGUISHER;
+    string _HACKINGDEVICE;
+    string _METALDETECTOR;
+    string _NIGHTVISION;
+    string _PARACHUTE;
+    string _PETROLCAN;
+    string _TRANQILIZER;
 
     Model model_box = new Model(2107849419);
 
@@ -174,7 +193,9 @@ public class AddonWeapons : Script
 
     List<int> price_tints = new List<int> { };
 
-    List<Vector3> box_pos = new List<Vector3>()
+    private static List<Vector3> ammoBoxPositions = new List<Vector3>();
+    private static List<float> ammoBoxHeading = new List<float>();
+    private static List<Vector3> box_pos = new List<Vector3>()
     {
         new Vector3(19.04f, -1103.96f, 29.24f),
         new Vector3(814.0817f, -2159.347f, 29.04f),
@@ -189,19 +210,19 @@ public class AddonWeapons : Script
         new Vector3(2572.105f, 294.635f, 108.17f),
     };
 
-    List<Vector3> box_rot = new List<Vector3>()
+    private static List<float> box_rot = new List<float>()
     {
-        new Vector3(1.001787E-05f, 5.008956E-06f, -18.99999f),
-        new Vector3(0f, 0f, 0f),
-        new Vector3(0f, 0f, 46.9999f),
-        new Vector3(0f, 0f, 70.99976f),
-        new Vector3(0f, 0f, 0f),
-        new Vector3(0f, 0f, 44.99992f),
-        new Vector3(0f, 0f, 0f),
-        new Vector3(0f, 0f, 74.99975f),
-        new Vector3(0f, 0f, 40.99995f),
-        new Vector3(0f, 0f, 64.9998f),
-        new Vector3(0f, 0f, 0f),
+       -18.99999f,
+        0f,
+        46.9999f,
+        70.99976f,
+        0f,
+        44.99992f,
+        0f,
+        74.99975f,
+        40.99995f,
+        64.9998f,
+        0f,
     };
 
     List<Prop> box_prop = new List<Prop>() { };
@@ -227,7 +248,8 @@ public class AddonWeapons : Script
         InitializeMenu();
         GetDlcWeaponModels();
         SetMenuItems();
-        LoadAmmoBoxes();
+        BuildMenu();
+        ammoBoxPositions = LoadAmmoBoxes($"Scripts\\AddonWeapons\\AmmoBoxes.txt", out ammoBoxHeading);
         Tick += OnTick;
         KeyUp += onkeyup;
         Aborted += OnAborted;
@@ -553,6 +575,15 @@ public class AddonWeapons : Script
         _NO_MONEY = Game.GetLocalizedString("MPCT_SMON_04");
         if (_NO_MONEY.Length < 3) _NO_MONEY = "~z~You'll need more cash to afford that.";
 
+        _RUBBERGUN = "Less Lethal";
+        _DIGISCANNER = "Digiscanners";
+        _FIREEXTINGUISHER = "Fire Extinguishers";
+        _HACKINGDEVICE = "Hacking Devices";
+        _METALDETECTOR = "Metal Detectors";
+        _NIGHTVISION = "Night Visions";
+        _PARACHUTE = "Parachutes";
+        _PETROLCAN = "Petrol Cans";
+        _TRANQILIZER = "Tranquilizers";
 
         menuOpenKey = config_settings.GetValue<Keys>("MENU", "MenuOpenKey", Keys.None);
     }
@@ -600,7 +631,7 @@ public class AddonWeapons : Script
         weaponCategories.Add(690389602u, new List<DlcWeaponDataWithComponents>()); // GROUP_STUNGUN
         weaponCategories.Add(1548507267u, new List<DlcWeaponDataWithComponents>()); // GROUP_THROWN
         weaponCategories.Add(75159441u, new List<DlcWeaponDataWithComponents>()); // GROUP_TRANQILIZER
-        weaponCategories.Add(2685387236u, new List<DlcWeaponDataWithComponents>()); // GROUP_UNARMED
+        weaponCategories.Add(88899580u, new List<DlcWeaponDataWithComponents>()); // GROUP_RUBBERGUN
     }
 
     private void InitializeMenu()
@@ -616,20 +647,18 @@ public class AddonWeapons : Script
         SMGsMenu = new NativeMenu("", _TITLE_SMG, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
         SniperRiflesMenu = new NativeMenu("", _TITLE_SR, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
         StunGunMenu = new NativeMenu("", _TITLE_SG, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
+        RubberGuns = new NativeMenu("", _RUBBERGUN, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
         ThrownMenu = new NativeMenu("", _TITLE_THROWN, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
+        DigiScaners = new NativeMenu("", _DIGISCANNER, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
+        FireExtinguishers = new NativeMenu("", _FIREEXTINGUISHER, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
+        HackingDevices = new NativeMenu("", _HACKINGDEVICE, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
+        MetalDetectors = new NativeMenu("", _METALDETECTOR, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
+        NightVisions = new NativeMenu("", _NIGHTVISION, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
+        Parachutes = new NativeMenu("", _PARACHUTE, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
+        PetrolCans = new NativeMenu("", _PETROLCAN, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
+        Tranquilizers = new NativeMenu("", _TRANQILIZER, " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
 
         ComponentMenu = new NativeMenu("", "", " ", new ScaledTexture(PointF.Empty, new SizeF(0, 108), "shopui_title_gunclub", "shopui_title_gunclub"));
-
-        menu.AddSubMenu(HeavyMenu);
-        menu.AddSubMenu(MeleeMenu);
-        menu.AddSubMenu(MachineGunsMenu);
-        menu.AddSubMenu(PistolsMenu);
-        menu.AddSubMenu(RiflesMenu);
-        menu.AddSubMenu(ShotgunsMenu);
-        menu.AddSubMenu(SMGsMenu);
-        menu.AddSubMenu(SniperRiflesMenu);
-        menu.AddSubMenu(StunGunMenu);
-        menu.AddSubMenu(ThrownMenu);
 
         pool.Add(menu);
         pool.Add(HeavyMenu);
@@ -641,8 +670,17 @@ public class AddonWeapons : Script
         pool.Add(SMGsMenu);
         pool.Add(SniperRiflesMenu);
         pool.Add(StunGunMenu);
+        pool.Add(RubberGuns);
         pool.Add(ThrownMenu);
         pool.Add(ComponentMenu);
+        pool.Add(DigiScaners);
+        pool.Add(FireExtinguishers);
+        pool.Add(HackingDevices);
+        pool.Add(MetalDetectors);
+        pool.Add(NightVisions);
+        pool.Add(Parachutes);
+        pool.Add(PetrolCans);
+        pool.Add(Tranquilizers);
 
         string[] commands = File.ReadAllLines($"Scripts\\AddonWeapons\\commandline.txt");
         foreach (string command in commands)
@@ -664,44 +702,90 @@ public class AddonWeapons : Script
         }
     }
 
-    private void LoadAmmoBoxes()
+    public static List<Vector3> LoadAmmoBoxes(string filePath, out List<float> ammoBoxHeading)
     {
-        box_prop.Add(null);
-        box_prop.Add(null);
-        box_prop.Add(null);
-        box_prop.Add(null);
-        box_prop.Add(null);
-        box_prop.Add(null);
-        box_prop.Add(null);
-        box_prop.Add(null);
-        box_prop.Add(null);
-        box_prop.Add(null);
-        box_prop.Add(null);
+        List<Vector3> ammoBoxPositions = new List<Vector3>();
+        ammoBoxHeading = new List<float>();
+
+        if (!File.Exists($"Scripts\\AddonWeapons\\AmmoBoxes.txt"))
+        {
+            ammoBoxPositions = box_pos;
+            ammoBoxHeading = box_rot;
+            return ammoBoxPositions;
+        }
+
+        string[] lines = File.ReadAllLines($"Scripts\\AddonWeapons\\AmmoBoxes.txt");
+        foreach (string line in lines)
+        {
+            (Vector3? position, float? heading) = ParseVector3AndHeading(line);
+            if (position.HasValue && heading.HasValue)
+            {
+                ammoBoxPositions.Add(position.Value);
+                ammoBoxHeading.Add(heading.Value);
+            }
+        }
+        return ammoBoxPositions;
+    }
+
+    private static (Vector3?, float?) ParseVector3AndHeading(string input)
+    {
+        try
+        {
+            string[] parts = input.Split(',');
+            if (parts.Length != 4) return (null, null);
+
+            float x = float.Parse(parts[0].Trim(), CultureInfo.InvariantCulture);
+            float y = float.Parse(parts[1].Trim(), CultureInfo.InvariantCulture);
+            float z = float.Parse(parts[2].Trim(), CultureInfo.InvariantCulture);
+            float heading = float.Parse(parts[3].Trim(), CultureInfo.InvariantCulture);
+
+            return (new Vector3(x, y, z), heading);
+        }
+        catch
+        {
+            return (null, null);
+        }
     }
 
     private void CreateAmmoBoxesThisFrame()
     {
-        for (int i = 0; i < box_pos.Count; i++)
+        if (box_prop == null)
         {
-            if (Game.Player.Character.Position.DistanceTo(box_pos[i]) < 10f)
+            box_prop = new List<Prop>();
+        }
+
+        while (box_prop.Count < ammoBoxPositions.Count)
+        {
+            box_prop.Add(null);
+        }
+
+        for (int i = 0; i < ammoBoxPositions.Count; i++)
+        {
+            float distance = Game.Player.Character.Position.DistanceTo(ammoBoxPositions[i]);
+
+            // Создаем ящик, если его нет и игрок в радиусе 10 метров
+            if (distance < 10f && (box_prop[i] == null || !box_prop[i].Exists()))
             {
-                if (box_prop[i] == null)
+                box_prop[i] = World.CreateProp(model_box, ammoBoxPositions[i], new Vector3(0, 0, ammoBoxHeading[i]), false, false);
+                if (box_prop[i] != null && box_prop[i].Exists())
                 {
-                    box_prop[i] = World.CreateProp(model_box, box_pos[i], box_rot[i], false, false);
                     Function.Call(Hash.PLACE_OBJECT_ON_GROUND_PROPERLY, box_prop[i]);
                     Function.Call(Hash.FREEZE_ENTITY_POSITION, box_prop[i], true);
                 }
             }
 
-            if (Game.Player.Character.Position.DistanceTo(box_pos[i]) > 15f && box_prop[i] != null && box_prop[i].Exists())
+            // Удаляем ящик, если игрок слишком далеко (> 15 м)
+            if (distance > 15f && box_prop[i] != null && box_prop[i].Exists())
             {
                 box_prop[i].Delete();
                 box_prop[i] = null;
             }
 
+            // Взаимодействие с ящиком
             if (box_prop[i] != null && box_prop[i].Exists())
             {
-                if (Game.Player.Character.Position.DistanceTo(box_prop[i].Position) < 1.5f)
+                float playerDistance = Game.Player.Character.Position.DistanceTo(box_prop[i].Position);
+                if (playerDistance < 1.5f)
                 {
                     if (!IsMenuOpen())
                     {
@@ -719,6 +803,7 @@ public class AddonWeapons : Script
             }
         }
     }
+
 
     private void AddDictValue(int type_dict, uint player, uint weaponHash, uint componentHash, int tint)
     {
@@ -985,6 +1070,60 @@ public class AddonWeapons : Script
         {
             ThrownMenu.Visible = false;
             CurrentOpenedMenu = ThrownMenu;
+        }
+
+        if (RubberGuns.Visible)
+        {
+            RubberGuns.Visible = false;
+            CurrentOpenedMenu = RubberGuns;
+        }
+
+        if (DigiScaners.Visible)
+        {
+            DigiScaners.Visible = false;
+            CurrentOpenedMenu = DigiScaners;
+        }
+
+        if (FireExtinguishers.Visible)
+        {
+            FireExtinguishers.Visible = false;
+            CurrentOpenedMenu = FireExtinguishers;
+        }
+
+        if (HackingDevices.Visible)
+        {
+            HackingDevices.Visible = false;
+            CurrentOpenedMenu = HackingDevices;
+        }
+
+        if (MetalDetectors.Visible)
+        {
+            MetalDetectors.Visible = false;
+            CurrentOpenedMenu = MetalDetectors;
+        }
+
+        if (NightVisions.Visible)
+        {
+            NightVisions.Visible = false;
+            CurrentOpenedMenu = NightVisions;
+        }
+
+        if (Parachutes.Visible)
+        {
+            Parachutes.Visible = false;
+            CurrentOpenedMenu = Parachutes;
+        }
+
+        if (PetrolCans.Visible)
+        {
+            PetrolCans.Visible = false;
+            CurrentOpenedMenu = PetrolCans;
+        }
+
+        if (Tranquilizers.Visible)
+        {
+            Tranquilizers.Visible = false;
+            CurrentOpenedMenu = Tranquilizers;
         }
 
         if (ComponentMenu.Visible)
@@ -1578,7 +1717,16 @@ public class AddonWeapons : Script
         SMGsMenu.Clear();
         SniperRiflesMenu.Clear();
         StunGunMenu.Clear();
+        RubberGuns.Clear();
         ThrownMenu.Clear();
+        DigiScaners.Clear();
+        FireExtinguishers.Clear();
+        HackingDevices.Clear();
+        MetalDetectors.Clear();
+        NightVisions.Clear();
+        Parachutes.Clear();
+        PetrolCans.Clear();
+        Tranquilizers.Clear();
 
         foreach (NativeMenu menu in CustomMenusList)
         {
@@ -1720,6 +1868,69 @@ public class AddonWeapons : Script
                                         blocked = weap_m;
                                     }
                                     break;
+                                case "GROUP_RUBBERGUN":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        RubberGuns.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_DIGISCANNER":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        DigiScaners.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_FIREEXTINGUISHER":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        FireExtinguishers.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_HACKINGDEVICE":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        HackingDevices.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_METALDETECTOR":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        MetalDetectors.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_NIGHTVISION":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        NightVisions.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_PARACHUTE":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        Parachutes.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_PETROLCAN":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        PetrolCans.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
+                                case "GROUP_TRANQUILIZER":
+                                    if (new Model(parameters[0]).Hash == (int)weaponHash)
+                                    {
+                                        Tranquilizers.Add(weap_m);
+                                        blocked = weap_m;
+                                    }
+                                    break;
                             }
 
                             foreach (NativeMenu custom in CustomMenusList)
@@ -1765,6 +1976,9 @@ public class AddonWeapons : Script
                     case GROUP_SNIPER:
                         SniperRiflesMenu.Add(weap_m);
                         break;
+                    case GROUP_RUBBERGUN:
+                        RubberGuns.Add(weap_m);
+                        break;
                     case GROUP_STUNGUN:
                         StunGunMenu.Add(weap_m);
                         NoAmmoWeaponList.Add(weaponHash);
@@ -1772,10 +1986,57 @@ public class AddonWeapons : Script
                     case GROUP_THROWN:
                         ThrownMenu.Add(weap_m);
                         break;
+                    case GROUP_DIGISCANNER:
+                        DigiScaners.Add(weap_m);
+                        break;
+                    case GROUP_FIREEXTINGUISHER:
+                        FireExtinguishers.Add(weap_m);
+                        break;
+                    case GROUP_HACKINGDEVICE:
+                        HackingDevices.Add(weap_m);
+                        break;
+                    case GROUP_METALDETECTOR:
+                        MetalDetectors.Add(weap_m);
+                        break;
+                    case GROUP_NIGHTVISION:
+                        NightVisions.Add(weap_m);
+                        break;
+                    case GROUP_PARACHUTE:
+                        Parachutes.Add(weap_m);
+                        break;
+                    case GROUP_PETROLCAN:
+                        PetrolCans.Add(weap_m);
+                        break;
+                    case GROUP_TRANQILIZER:
+                        Tranquilizers.Add(weap_m);
+                        break;
                 }
 
             }
         }
+    }
+
+    private void BuildMenu()
+    {
+        if (HeavyMenu.Items.Count > 0) menu.AddSubMenu(HeavyMenu);
+        if (MeleeMenu.Items.Count > 0) menu.AddSubMenu(MeleeMenu);
+        if (MachineGunsMenu.Items.Count > 0) menu.AddSubMenu(MachineGunsMenu);
+        if (PistolsMenu.Items.Count > 0) menu.AddSubMenu(PistolsMenu);
+        if (RiflesMenu.Items.Count > 0) menu.AddSubMenu(RiflesMenu);
+        if (ShotgunsMenu.Items.Count > 0) menu.AddSubMenu(ShotgunsMenu);
+        if (SMGsMenu.Items.Count > 0) menu.AddSubMenu(SMGsMenu);
+        if (SniperRiflesMenu.Items.Count > 0) menu.AddSubMenu(SniperRiflesMenu);
+        if (StunGunMenu.Items.Count > 0) menu.AddSubMenu(StunGunMenu);
+        if (ThrownMenu.Items.Count > 0) menu.AddSubMenu(ThrownMenu);
+        if (RubberGuns.Items.Count > 0) menu.AddSubMenu(RubberGuns);
+        if (DigiScaners.Items.Count > 0) menu.AddSubMenu(DigiScaners);
+        if (FireExtinguishers.Items.Count > 0) menu.AddSubMenu(FireExtinguishers);
+        if (HackingDevices.Items.Count > 0) menu.AddSubMenu(HackingDevices);
+        if (MetalDetectors.Items.Count > 0) menu.AddSubMenu(MetalDetectors);
+        if (NightVisions.Items.Count > 0) menu.AddSubMenu(NightVisions);
+        if (Parachutes.Items.Count > 0) menu.AddSubMenu(Parachutes);
+        if (PetrolCans.Items.Count > 0) menu.AddSubMenu(PetrolCans);
+        if (Tranquilizers.Items.Count > 0) menu.AddSubMenu(Tranquilizers);
     }
 
     private void SerializeDictionary<T1, T2, T3>(string filePath, Dictionary<T1, Dictionary<T2, List<T3>>> dictionary)
