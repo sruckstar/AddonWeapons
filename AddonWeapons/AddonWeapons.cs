@@ -15,6 +15,8 @@ using LemonUI.Elements;
 using LemonUI.Extensions;
 using LemonUI.Tools;
 using System.Globalization;
+using System.Reflection;
+using System.Linq;
 
 public class AddonWeapons : Script
 {
@@ -1391,9 +1393,18 @@ public class AddonWeapons : Script
     private List<uint> GetComponentsList(DlcWeaponDataWithComponents weapon)
     {
         List<uint> components_hashes = new List<uint>();
+        int max_tint;
+        string filePath = $"Scripts\\AddonWeapons\\tints\\{weapon.WeaponData.GetNameLabel()}.txt";
 
-        int max_tint = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weapon.WeaponData.weaponHash);
-        if (max_tint == 33) max_tint--;
+        if (File.Exists(filePath))
+        {
+            max_tint = File.ReadLines(filePath).Count();
+        }
+        else
+        {
+            max_tint = Function.Call<int>(Hash.GET_WEAPON_TINT_COUNT, weapon.WeaponData.weaponHash);
+            if (max_tint == 33) max_tint--;
+        }
 
         for (int i = 0; i < max_tint; i++)
         {
@@ -1459,7 +1470,154 @@ public class AddonWeapons : Script
 
     private void RefreshComponentMenu(NativeMenu ComponentMenu, List<uint> components_hashes, List<int> components_cost)
     {
+        uint player = (uint)Game.Player.Character.Model.Hash;
+        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
+        BadgeSet shop_tick = CreateBafgeFromItem("commonmenu", "shop_tick_icon", "commonmenu", "shop_tick_icon");
+        List<NativeItem> items = ComponentMenu.Items;
 
+        int i = 0;
+        bool IsRounds = true;
+        foreach (var item in items)
+        {
+            if (IsRounds) //Skip the first item (rounds)
+            {
+                IsRounds = false;
+                continue;
+            }
+
+            if (price_tints.Count > i)
+            {
+                if (Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, current_weapon_hash) == i)
+                {
+                    if (!ValueContains(TINTS_DICT, player, current_weapon_hash, 0, i))
+                    {
+                        AddDictValue(TINTS_DICT, player, current_weapon_hash, 0, i);
+                    }
+                    item.AltTitle = "";
+                    item.RightBadgeSet = shop_gun;
+                }
+                else
+                {
+                    if (ValueContains(TINTS_DICT, player, current_weapon_hash, 0, i))
+                    {
+                        item.AltTitle = "";
+                        item.RightBadgeSet = shop_tick;
+                    }
+                    else
+                    {
+                        item.AltTitle = $"${price_tints[i]}";
+                        item.RightBadgeSet = null;
+                    }
+                }
+            }
+            else if (i >= price_tints.Count)
+            {
+                int index = i;
+                if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, current_weapon_hash, components_hashes[index]))
+                {
+                    if (ValueContains(COMPONENTS_DICT, player, current_weapon_hash, components_hashes[index], 0))
+                    {
+                        AddDictValue(COMPONENTS_DICT, player, current_weapon_hash, components_hashes[index], 0);
+                    }
+
+                    item.AltTitle = "";
+                    item.RightBadgeSet = shop_gun;
+                }
+                else
+                {
+                    if (ValueContains(COMPONENTS_DICT, player, current_weapon_hash, components_hashes[index], 0))
+                    {
+                        item.AltTitle = "";
+                        item.RightBadgeSet = shop_tick;
+                    }
+                    else
+                    {
+                        item.AltTitle = $"${components_cost[index]}";
+                        item.RightBadgeSet = null;
+                    }
+                }
+            }
+
+            i++;
+        }
+    }
+
+    private void RefreshComponentMenuNEW(NativeMenu ComponentMenu, List<uint> components_hashes, List<int> components_cost)
+    {
+        uint player = (uint)Game.Player.Character.Model.Hash;
+        BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
+        BadgeSet shop_tick = CreateBafgeFromItem("commonmenu", "shop_tick_icon", "commonmenu", "shop_tick_icon");
+        List<NativeItem> items = ComponentMenu.Items;
+
+        int i = 0;
+        bool IsRounds = true;
+        foreach (var item in items)
+        {
+            if (IsRounds) //Skip the first item (rounds)
+            {
+                IsRounds = false;
+                continue;
+            }
+
+            if (price_tints.Count > i)
+            {
+                if (Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Game.Player.Character, current_weapon_hash) == i)
+                {
+                    if (!ValueContains(TINTS_DICT, player, current_weapon_hash, 0, i))
+                    {
+                        AddDictValue(TINTS_DICT, player, current_weapon_hash, 0, i);
+                    }
+                    item.AltTitle = "";
+                    item.RightBadgeSet = shop_gun;
+                }
+                else
+                {
+                    if (ValueContains(TINTS_DICT, player, current_weapon_hash, 0, i))
+                    {
+                        item.AltTitle = "";
+                        item.RightBadgeSet = shop_tick;
+                    }
+                    else
+                    {
+                        item.AltTitle = $"${price_tints[i]}";
+                        item.RightBadgeSet = null;
+                    }
+                }
+            }
+            else 
+            {
+                if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, current_weapon_hash, components_hashes[i]))
+                {
+                    if (ValueContains(COMPONENTS_DICT, player, current_weapon_hash, components_hashes[i], 0))
+                    {
+                        AddDictValue(COMPONENTS_DICT, player, current_weapon_hash, components_hashes[i], 0);
+                    }
+
+                    item.AltTitle = "";
+                    item.RightBadgeSet = shop_gun;
+                }
+                else
+                {
+                    if (ValueContains(COMPONENTS_DICT, player, current_weapon_hash, components_hashes[i], 0))
+                    {
+                        item.AltTitle = "";
+                        item.RightBadgeSet = shop_tick;
+                    }
+                    else
+                    {
+                        item.AltTitle = $"${components_cost[i]}";
+                        item.RightBadgeSet = null;
+                    }
+                }
+            }
+
+            i++;
+        }
+    }
+
+    private void RefreshComponentMenuOld(NativeMenu ComponentMenu, List<uint> components_hashes, List<int> components_cost)
+    {
+        
         uint player = (uint)Game.Player.Character.Model.Hash;
         BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
         BadgeSet shop_tick = CreateBafgeFromItem("commonmenu", "shop_tick_icon", "commonmenu", "shop_tick_icon");
@@ -1533,6 +1691,11 @@ public class AddonWeapons : Script
         }
 
         SaveWeaponInInventory(player);
+    }
+
+    private void ComponentMenu_ItemClicked(object sender, ItemActivatedArgs e)
+    {
+        throw new NotImplementedException();
     }
 
     bool HashComponentsAvailable(uint weaponHash)
