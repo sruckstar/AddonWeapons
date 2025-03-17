@@ -400,7 +400,7 @@ public class AddonWeapons : Script
 
     private void LoadInventoryForPed(Ped npc)
     {
-        uint player = (uint)npc.Model.Hash;      
+        uint player = (uint)npc.Model.Hash;
 
         List<uint> weaponsHashes = new List<uint>(purchased_components[player].Keys);
         if (weaponsHashes.Count == 0) return;
@@ -1584,7 +1584,7 @@ public class AddonWeapons : Script
                     }
                 }
             }
-            else 
+            else
             {
                 if (Function.Call<bool>(Hash.HAS_PED_GOT_WEAPON_COMPONENT, Game.Player.Character, current_weapon_hash, components_hashes[i]))
                 {
@@ -1617,7 +1617,7 @@ public class AddonWeapons : Script
 
     private void RefreshComponentMenuOld(NativeMenu ComponentMenu, List<uint> components_hashes, List<int> components_cost)
     {
-        
+
         uint player = (uint)Game.Player.Character.Model.Hash;
         BadgeSet shop_gun = CreateBafgeFromItem("commonmenu", "shop_gunclub_icon_a", "commonmenu", "shop_gunclub_icon_b");
         BadgeSet shop_tick = CreateBafgeFromItem("commonmenu", "shop_tick_icon", "commonmenu", "shop_tick_icon");
@@ -1730,7 +1730,7 @@ public class AddonWeapons : Script
                 {
                     if (HashComponentsAvailable(weaponHash))
                     {
-                        
+
                         current_weapon_hash = weaponHash;
                         CloseAllMenus();
                         ComponentMenu.Clear();
@@ -1746,7 +1746,7 @@ public class AddonWeapons : Script
                                 NativeItem rounds_m = CreateAmmoItem(defaultClipSize, ammoCost, weapon.WeaponData.ammoCost, weaponHash);
                                 ComponentMenu.Add(rounds_m);
                             }
-                            
+
                             CreateWeaponLivery(weapon, WeapLabel, weaponHash);
 
                             if ((WeaponHash)weaponHash == WeaponHash.StunGunMultiplayer)
@@ -1959,7 +1959,7 @@ public class AddonWeapons : Script
                         string[] parameters = ExtractParameters(trimmedCommand, "PutWeaponToCategory", 2);
                         if (parameters != null)
                         {
-                            switch(parameters[1])
+                            switch (parameters[1])
                             {
                                 case "GROUP_HEAVY":
                                     if (new Model(parameters[0]).Hash == (int)weaponHash)
