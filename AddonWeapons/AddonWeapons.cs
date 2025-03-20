@@ -993,7 +993,30 @@ public class AddonWeapons : Script
         WaitLoadedInventory();
         SetCurrentWeapon();
         ReOpenLastMenu();
+        UpdatePlayerWeapon();
 
+    }
+
+    private void UpdatePlayerWeapon()
+    {
+        Ped player = Game.Player.Character;
+        uint PlayerHash = (uint)Game.Player.Character.Model.Hash;
+
+        if (purchased_components.ContainsKey(PlayerHash))
+        {
+            foreach (var weaponHash in purchased_components[PlayerHash].Keys.ToArray())
+            {
+                if (!player.Weapons.HasWeapon((WeaponHash)weaponHash))
+                {
+                    purchased_components[PlayerHash].Remove(weaponHash);
+                    if (install_components.ContainsKey(PlayerHash)) install_components[PlayerHash].Remove(weaponHash);
+                    if (purchased_tints.ContainsKey(PlayerHash)) purchased_tints[PlayerHash].Remove(weaponHash);
+                    if (install_tints.ContainsKey(PlayerHash)) install_tints[PlayerHash].Remove(weaponHash);
+                    if (install_ammo.ContainsKey(PlayerHash)) install_ammo[PlayerHash].Remove(weaponHash);
+                    SaveWeaponInInventory(PlayerHash);
+                }
+            }
+        }
     }
 
     private bool IsMenuOpen()
